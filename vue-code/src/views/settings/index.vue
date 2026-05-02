@@ -5,6 +5,7 @@ import { getCurrentUser, changePassword } from '@/api/system'
 import { logout } from '@/api/auth'
 import { getSetting, saveSetting, testEmail } from '@/api/setting'
 import { getAIStatus } from '@/api/ai'
+import { getBackupModules, exportBackup, importBackup, type BackupModule } from '@/api/backup'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { clearAuthToken } from '@/utils/request'
 
@@ -111,6 +112,7 @@ const menuItems = [
   { key: 'ai', label: 'AI 服务配置', icon: '🤖' },
   { key: 'prompt', label: 'AI客服配置', icon: '💬' },
   { key: 'email', label: '邮箱通知', icon: '📧' },
+  { key: 'backup', label: '备份与恢复', icon: '💾' },
   { key: 'about', label: '关于', icon: 'ℹ️' }
 ]
 
@@ -533,6 +535,165 @@ async function handleTestEmail() {
     emailTesting.value = false
   }
 }
+
+// 备份与恢复
+const backupModules = ref<BackupModule[]>([])
+const backupSelectedModules = ref<string[]>([])
+const backupLoaded = ref(false)
+const backupExporting = ref(false)
+const backupImporting = ref(false)
+const backupExportProgress = ref(0)
+const backupImportProgress = ref(0)
+
+async function loadBackupModules() {
+  if (backupLoaded.value) return
+  try {
+    const res = await getBackupModules()
+    if (res.code === 200 && res.data) {
+      backupModules.value = res.data
+      backupSelectedModules.value = res.data.map((m: BackupModule) => m.moduleKey)
+      backupLoaded.value = true
+    }
+  } catch (e) {
+    console.error('获取备份模块列表失败:', e)
+  }
+}
+
+function toggleBackupModule(key: string) {
+  const idx = backupSelectedModules.value.indexOf(key)
+  if (idx >= 0) {
+    backupSelectedModules.value.splice(idx, 1)
+  } else {
+    backupSelectedModules.value.push(key)
+  }
+}
+
+function toggleAllBackupModules() {
+  if (backupSelectedModules.value.length === backupModules.value.length) {
+    backupSelectedModules.value = []
+  } else {
+    backupSelectedModules.value = backupModules.value.map(m => m.moduleKey)
+  }
+}
+
+async function handleExportBackup() {
+  if (backupSelectedModules.value.length === 0) {
+    ElMessage.warning('请至少选择一个模块')
+    return
+  }
+  backupExporting.value = true
+  backupExportProgress.value = 0
+  try {
+    const total = backupSelectedModules.value.length
+    const progressStep = 100 / total
+    for (let i = 0; i < total; i++) {
+      backupExportProgress.value = Math.round((i + 1) * progressStep)
+      await new Promise(r => setTimeout(r, 100))
+    }
+    const res = await exportBackup({ modules: backupSelectedModules.value })
+    if (res.code === 200 && res.data) {
+      backupExportProgress.value = 100
+      const jsonStr = res.data.jsonData
+      const blob = new Blob([jsonStr], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const now = new Date()
+      const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`
+      a.download = `xianyu_backup_${ts}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      ElMessage.success('备份导出成功')
+    } else {
+      ElMessage.error(res.msg || '导出失败')
+    }
+  } catch (e: any) {
+    console.error('导出备份失败:', e)
+    ElMessage.error(e.message || '导出失败')
+  } finally {
+    backupExporting.value = false
+    backupExportProgress.value = 0
+  }
+}
+
+const importFileInput = ref<HTMLInputElement | null>(null)
+const importJsonData = ref('')
+const importFileName = ref('')
+
+function triggerImportFile() {
+  importFileInput.value?.click()
+}
+
+function handleImportFileChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  importFileName.value = file.name
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    importJsonData.value = ev.target?.result as string
+  }
+  reader.readAsText(file)
+}
+
+async function handleImportBackup() {
+  if (!importJsonData.value) {
+    ElMessage.warning('请先选择备份文件')
+    return
+  }
+  if (backupSelectedModules.value.length === 0) {
+    ElMessage.warning('请至少选择一个模块')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      '导入数据将覆盖当前选中模块的已有数据，是否继续？',
+      '确认导入',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  backupImporting.value = true
+  backupImportProgress.value = 0
+  try {
+    const total = backupSelectedModules.value.length
+    const progressStep = 100 / (total + 1)
+    for (let i = 0; i < total; i++) {
+      backupImportProgress.value = Math.round((i + 1) * progressStep)
+      await new Promise(r => setTimeout(r, 100))
+    }
+    const res = await importBackup({ jsonData: importJsonData.value, modules: backupSelectedModules.value })
+    if (res.code === 200 && res.data) {
+      backupImportProgress.value = 100
+      const result = res.data
+      if (result.failedModules && result.failedModules.length > 0) {
+        ElMessage.warning(`导入完成：${result.successCount}/${result.totalCount} 成功，失败模块：${result.failedModules.join(', ')}`)
+      } else {
+        ElMessage.success(`导入成功：${result.successCount} 个模块`)
+      }
+      importJsonData.value = ''
+      importFileName.value = ''
+      if (importFileInput.value) importFileInput.value.value = ''
+    } else {
+      ElMessage.error(res.msg || '导入失败')
+    }
+  } catch (e: any) {
+    console.error('导入备份失败:', e)
+    ElMessage.error(e.message || '导入失败')
+  } finally {
+    backupImporting.value = false
+    backupImportProgress.value = 0
+  }
+}
+
+function handleBackupMenuEnter() {
+  loadBackupModules()
+}
 </script>
 
 <template>
@@ -546,7 +707,7 @@ async function handleTestEmail() {
           :key="item.key"
           class="settings__menu-item"
           :class="{ 'settings__menu-item--active': activeMenu === item.key }"
-          @click="activeMenu = item.key"
+          @click="activeMenu = item.key; item.key === 'backup' && handleBackupMenuEnter()"
         >
           <span class="settings__menu-icon">{{ item.icon }}</span>
           <span class="settings__menu-label">{{ item.label }}</span>
@@ -1062,6 +1223,92 @@ async function handleTestEmail() {
             </tbody>
           </table>
           <p v-if="!emailConfigured" class="settings__hint" style="color:#e6a23c;margin-top:8px;">请先配置邮箱后再开启通知</p>
+        </div>
+      </div>
+
+      <!-- 备份与恢复 -->
+      <div v-if="activeMenu === 'backup'" class="settings__panel">
+        <div class="settings__panel-title">备份与恢复</div>
+
+        <div class="settings__section">
+          <div class="settings__section-title">选择备份模块</div>
+          <p class="settings__desc">选择需要导出或导入的数据模块，默认全部选择</p>
+          <div class="settings__backup-modules">
+            <div class="settings__backup-module-all">
+              <label class="settings__checkbox-label" @click.prevent="toggleAllBackupModules">
+                <span class="settings__checkbox" :class="{ 'settings__checkbox--checked': backupSelectedModules.length === backupModules.length && backupModules.length > 0 }">
+                  <span v-if="backupSelectedModules.length === backupModules.length && backupModules.length > 0" class="settings__checkbox-tick">✓</span>
+                </span>
+                全选
+              </label>
+            </div>
+            <div v-for="mod in backupModules" :key="mod.moduleKey" class="settings__backup-module-item">
+              <label class="settings__checkbox-label" @click.prevent="toggleBackupModule(mod.moduleKey)">
+                <span class="settings__checkbox" :class="{ 'settings__checkbox--checked': backupSelectedModules.includes(mod.moduleKey) }">
+                  <span v-if="backupSelectedModules.includes(mod.moduleKey)" class="settings__checkbox-tick">✓</span>
+                </span>
+                {{ mod.moduleName }}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings__section">
+          <div class="settings__section-title">导出备份</div>
+          <p class="settings__desc">将选中模块的数据导出为 JSON 文件</p>
+          <div v-if="backupExporting" class="settings__progress-wrap">
+            <div class="settings__progress-bar">
+              <div class="settings__progress-fill" :style="{ width: backupExportProgress + '%' }"></div>
+            </div>
+            <span class="settings__progress-text">{{ backupExportProgress }}%</span>
+          </div>
+          <div class="settings__actions">
+            <button
+              class="settings__btn settings__btn--primary"
+              :disabled="backupExporting || backupSelectedModules.length === 0"
+              @click="handleExportBackup"
+            >
+              {{ backupExporting ? '导出中...' : '导出备份' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="settings__section">
+          <div class="settings__section-title">导入恢复</div>
+          <p class="settings__desc">从 JSON 备份文件中恢复数据（将覆盖当前选中模块的已有数据）</p>
+          <input
+            ref="importFileInput"
+            type="file"
+            accept=".json"
+            class="settings__file-input"
+            @change="handleImportFileChange"
+          />
+          <div class="settings__import-file-row">
+            <button
+              class="settings__btn settings__btn--secondary"
+              :disabled="backupImporting"
+              @click="triggerImportFile"
+            >
+              选择文件
+            </button>
+            <span v-if="importFileName" class="settings__import-file-name">{{ importFileName }}</span>
+            <span v-else class="settings__import-file-hint">未选择文件</span>
+          </div>
+          <div v-if="backupImporting" class="settings__progress-wrap">
+            <div class="settings__progress-bar">
+              <div class="settings__progress-fill" :style="{ width: backupImportProgress + '%' }"></div>
+            </div>
+            <span class="settings__progress-text">{{ backupImportProgress }}%</span>
+          </div>
+          <div class="settings__actions">
+            <button
+              class="settings__btn settings__btn--danger"
+              :disabled="backupImporting || !importJsonData || backupSelectedModules.length === 0"
+              @click="handleImportBackup"
+            >
+              {{ backupImporting ? '导入中...' : '导入恢复' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1900,5 +2147,121 @@ async function handleTestEmail() {
 .settings__notify-td--desc {
   color: #6e6e73;
   font-size: 12px;
+}
+
+/* 备份与恢复 */
+.settings__backup-modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.settings__backup-module-all {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.settings__backup-module-item {
+}
+
+.settings__checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1d1d1f;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.settings__checkbox-label:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.settings__checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.settings__checkbox--checked {
+  background: #1d1d1f;
+  border-color: #1d1d1f;
+}
+
+.settings__checkbox-tick {
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.settings__progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.settings__progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.settings__progress-fill {
+  height: 100%;
+  background: #1d1d1f;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.settings__progress-text {
+  font-size: 12px;
+  color: #6e6e73;
+  min-width: 36px;
+  text-align: right;
+}
+
+.settings__file-input {
+  display: none;
+}
+
+.settings__import-file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.settings__import-file-name {
+  font-size: 13px;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.settings__import-file-hint {
+  font-size: 13px;
+  color: #86868b;
+}
+
+@media (max-width: 768px) {
+  .settings__backup-modules {
+    flex-direction: column;
+  }
 }
 </style>
