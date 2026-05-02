@@ -660,7 +660,7 @@
 /* Phone (< 768px) */
 @media screen and (max-width: 768px) {
   .orders {
-    padding: var(--d-space-3);
+    padding: 0;
   }
 
   .mobile-hidden {
@@ -668,37 +668,55 @@
   }
 
   .orders__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--d-space-3);
-    margin-bottom: var(--d-space-3);
-  }
-
-  .orders__actions {
-    width: 100%;
-  }
-
-  .orders__actions .btn {
-    flex: 1;
+    display: none;
   }
 
   .orders__filter-bar {
-    margin-bottom: var(--d-space-3);
+    margin-bottom: 0;
+  }
+
+  .orders__content {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
   }
 
   .orders__toolbar {
-    padding: var(--d-space-3) var(--d-space-4);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--d-border);
   }
 
   .orders__list-title {
-    font-size: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--d-text-secondary);
+  }
+
+  .orders__count {
+    font-size: 12px;
+  }
+
+  .orders__pagination {
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .orders__page-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .orders__page-info {
+    font-size: 11px;
   }
 }
 
 /* Small phone (< 480px) */
 @media screen and (max-width: 480px) {
   .orders {
-    padding: var(--d-space-2);
+    padding: 0;
   }
 
   .btn {

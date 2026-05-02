@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useConnectionManager } from './useConnectionManager'
 import ConnectionCard from './components/ConnectionCard.vue'
 import ConnectionDetail from './components/ConnectionDetail.vue'
 
 import IconLink from '@/components/icons/IconLink.vue'
 import IconSync from '@/components/icons/IconSync.vue'
+
+const router = useRouter()
 
 const {
   loading,
@@ -34,7 +37,7 @@ const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768
 }
 
-// Build connection map for card display（使用所有账号的连接状态）
+// Build connection map for card display
 const connectionMap = computed(() => {
   const map = new Map<number, {
     connected?: boolean
@@ -55,7 +58,11 @@ const connectionMap = computed(() => {
 
 // Handle account select
 const handleSelectAccount = (account: any) => {
-  selectAccount(account.id)
+  if (isMobile.value) {
+    router.push(`/connection/${account.id}`)
+  } else {
+    selectAccount(account.id)
+  }
 }
 
 onMounted(() => {
@@ -73,19 +80,7 @@ onUnmounted(() => {
     <!-- Page Header -->
     <header class="connection__header">
       <div class="connection__title-row">
-        <div class="connection__title-icon"><IconLink /></div>
         <h1 class="connection__title mobile-hidden">连接管理</h1>
-      </div>
-      <div v-if="!isMobile" class="connection__actions">
-        <button
-          class="btn btn--secondary"
-          :class="{ 'btn--loading': loading }"
-          @click="loadAccounts"
-          :disabled="loading"
-        >
-          <IconSync />
-          <span>刷新</span>
-        </button>
       </div>
     </header>
 
@@ -96,6 +91,15 @@ onUnmounted(() => {
           账号列表
           <span v-if="accounts.length" class="connection__count">{{ accounts.length }}</span>
         </span>
+        <button
+          class="btn btn--secondary"
+          :class="{ 'btn--loading': loading }"
+          @click="loadAccounts"
+          :disabled="loading"
+        >
+          <IconSync />
+          <span>刷新</span>
+        </button>
       </div>
 
       <!-- Desktop: Split layout -->
@@ -112,12 +116,11 @@ onUnmounted(() => {
         <div class="connection__detail">
           <ConnectionDetail
             :account-id="selectedAccountId"
-            :is-mobile="false"
           />
         </div>
       </div>
 
-      <!-- Mobile: List only -->
+      <!-- Mobile: List only, click to navigate -->
       <div v-else class="connection__scroll-wrap">
         <ConnectionCard
           :accounts="accounts"
@@ -128,13 +131,6 @@ onUnmounted(() => {
         />
       </div>
     </section>
-
-    <!-- Mobile Detail Overlay -->
-    <ConnectionDetail
-      v-if="isMobile"
-      :account-id="selectedAccountId"
-      :is-mobile="true"
-    />
   </div>
 </template>
 

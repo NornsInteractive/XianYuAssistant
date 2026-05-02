@@ -1125,7 +1125,7 @@
 /* Phone (< 768px) */
 @media screen and (max-width: 768px) {
   .ol {
-    padding: var(--d-space-3);
+    padding: 0;
   }
 
   .mobile-hidden {
@@ -1137,10 +1137,7 @@
   }
 
   .ol__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--d-space-3);
-    margin-bottom: var(--d-space-3);
+    display: none;
   }
 
   .ol__body {
@@ -1148,7 +1145,6 @@
     gap: 0;
   }
 
-  /* Mobile: hide panels based on view */
   .ol__account-panel--hidden {
     display: none;
   }
@@ -1157,23 +1153,54 @@
     display: none;
   }
 
-  .ol__select {
-    min-width: 110px;
+  .ol__account-panel {
+    border-radius: 0;
+    border: none;
+  }
+
+  .ol__logs-panel {
+    border-radius: 0;
+    border: none;
   }
 
   .ol__account-toolbar {
-    padding: var(--d-space-3);
+    padding: 10px 16px;
   }
 
   .ol__filter-bar {
-    padding: var(--d-space-3);
+    padding: 8px 16px;
+    flex-wrap: wrap;
+  }
+
+  .ol__logs-toolbar {
+    padding: 10px 16px;
+  }
+
+  .ol__pagination {
+    padding: 8px 12px;
+    gap: 4px;
+  }
+
+  .ol__page-btn {
+    min-width: 30px;
+    height: 30px;
+    font-size: 12px;
+  }
+
+  .ol__page-info {
+    font-size: 11px;
+  }
+
+  .ol__dialog {
+    max-width: calc(100vw - 32px);
+    max-height: 85vh;
   }
 }
 
 /* Small phone (< 480px) */
 @media screen and (max-width: 480px) {
   .ol {
-    padding: var(--d-space-2);
+    padding: 0;
   }
 
   .btn {

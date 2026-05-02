@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, inject, defineComponent, h } from 'vue'
 import { useOrderManager } from './useOrderManager'
 import './orders.css'
+import '@/styles/header-selectors.css'
 
 import IconClipboard from '@/components/icons/IconClipboard.vue'
 import IconSearch from '@/components/icons/IconSearch.vue'
@@ -36,10 +37,54 @@ const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768
 }
 
+// 导航栏注入
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            queryParams.xianyuAccountId = val ? parseInt(val) : undefined
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !queryParams.xianyuAccountId }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: queryParams.xianyuAccountId === acc.id
+            }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ]),
+      h('button', {
+        class: ['header-refresh-btn', { 'header-refresh-btn--loading': loading.value }],
+        disabled: loading.value,
+        onClick: loadOrders
+      }, [
+        h(IconRefresh, { class: 'header-refresh-icon' })
+      ]),
+      h('button', {
+        class: 'header-filter-btn',
+        onClick: openFilterSheet
+      }, [
+        h(IconFilter, { class: 'header-filter-icon' })
+      ])
+    ])
+  }
+})
+
 onMounted(async () => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
+  if (setHeaderContent) setHeaderContent(HeaderSelectors)
   await loadAccounts()
+  if (setHeaderContent) setHeaderContent(HeaderSelectors)
   loadOrders()
 })
 

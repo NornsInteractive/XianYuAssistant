@@ -19,6 +19,7 @@ const emit = defineEmits<Emits>()
 
 const cookieText = ref('')
 const loading = ref(false)
+const showHelpImage = ref(false)
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
@@ -56,17 +57,29 @@ const handleSubmit = async () => {
 
 const handleClose = () => {
   emit('update:modelValue', false)
+  showHelpImage.value = false
 }
 </script>
 
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="手动更新Cookie"
-    width="600px"
     @close="handleClose"
   >
-    <el-form label-width="80px">
+    <template #header>
+      <div class="dialog-header">
+        <span class="dialog-title">手动更新Cookie</span>
+        <button class="help-link" @click="showHelpImage = !showHelpImage">
+          不会获取Cookie？
+        </button>
+      </div>
+    </template>
+
+    <div v-if="showHelpImage" class="help-image-container">
+      <img src="/cookieGet.png" alt="Cookie获取指南" class="help-image" />
+    </div>
+
+    <el-form v-if="!showHelpImage" label-width="80px">
       <el-form-item label="Cookie值">
         <el-input
           v-model="cookieText"
@@ -109,8 +122,8 @@ const handleClose = () => {
     </el-form>
 
     <template #footer>
-      <el-button @click="handleClose">取消</el-button>
-      <el-button type="primary" :loading="loading" @click="handleSubmit">
+      <el-button @click="handleClose">{{ showHelpImage ? '返回' : '取消' }}</el-button>
+      <el-button v-if="!showHelpImage" type="primary" :loading="loading" @click="handleSubmit">
         确定更新
       </el-button>
     </template>
@@ -118,6 +131,48 @@ const handleClose = () => {
 </template>
 
 <style scoped>
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.help-link {
+  background: none;
+  border: none;
+  color: #86868b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.help-link:hover {
+  color: #007aff;
+}
+
+.help-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+  min-height: 400px;
+}
+
+.help-image {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .cookie-input :deep(.el-textarea__inner) {
   font-family: 'Courier New', Consolas, monospace;
   font-size: 12px;

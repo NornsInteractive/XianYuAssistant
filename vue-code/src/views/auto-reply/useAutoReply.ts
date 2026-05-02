@@ -198,7 +198,7 @@ export function useAutoReply() {
           }
         }
 
-        if (goodsCurrentPage.value === 1 && goodsList.value.length > 0 && !selectedGoods.value) {
+        if (goodsCurrentPage.value === 1 && goodsList.value.length > 0 && !selectedGoods.value && !isMobile.value) {
           selectGoods(goodsList.value[0]!)
         }
 

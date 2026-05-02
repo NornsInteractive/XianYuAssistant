@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, inject, defineComponent, h } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import '@/styles/header-selectors.css'
 import {
   getKamiConfigsByAccountId,
   saveKamiConfig,
@@ -15,6 +16,7 @@ import {
 } from '@/api/kami-config'
 import { getAccountList } from '@/api/account'
 import type { Account } from '@/types'
+import IconChevronDown from '@/components/icons/IconChevronDown.vue'
 
 const accounts = ref<Account[]>([])
 const selectedAccountId = ref<number | null>(null)
@@ -58,6 +60,34 @@ const checkScreenSize = () => {
   isMobile.value = window.innerWidth < 768
 }
 
+// 导航栏注入 — 必须在 setup 顶层调用
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            selectedAccountId.value = val ? parseInt(val) : null
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !selectedAccountId.value }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: selectedAccountId.value === acc.id
+            }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ])
+    ])
+  }
+})
+
 const selectedConfig = computed(() => {
   return kamiConfigs.value.find(c => c.id === selectedConfigId.value)
 })
@@ -83,7 +113,7 @@ const loadKamiConfigs = async () => {
     const res = await getKamiConfigsByAccountId(selectedAccountId.value)
     if (res.code === 200) {
       kamiConfigs.value = res.data || []
-      if (kamiConfigs.value.length > 0 && !selectedConfigId.value) {
+      if (kamiConfigs.value.length > 0 && !selectedConfigId.value && !isMobile.value) {
         selectedConfigId.value = kamiConfigs.value[0]!.id
         loadKamiItems()
       } else if (kamiConfigs.value.length === 0) {
@@ -313,132 +343,243 @@ watch(selectedAccountId, () => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
-  loadAccounts()
+  if (setHeaderContent) setHeaderContent(HeaderSelectors)
+  await loadAccounts()
 })
 </script>
 
 <template>
   <div class="kami-page">
-    <header class="kami-page__header">
-      <h1 class="kami-page__title">🔑 卡密仓库</h1>
-      <div class="kami-page__actions">
-        <el-select
-          v-model="selectedAccountId"
-          placeholder="选择账号"
-          class="account-select"
-          @change="handleAccountChange"
-        >
-          <el-option
-            v-for="acc in accounts"
-            :key="acc.id"
-            :label="acc.accountNote || `账号${acc.id}`"
-            :value="acc.id"
-          />
-        </el-select>
-        <el-button type="primary" @click="showCreateDialog = true" :disabled="!selectedAccountId">
-          新建配置
-        </el-button>
-      </div>
-    </header>
 
-    <div class="kami-page__body">
-      <div class="kami-page__sidebar">
-        <div v-if="configLoading" class="kami-page__empty">加载中...</div>
-        <div v-else-if="kamiConfigs.length === 0" class="kami-page__empty">暂无配置，点击右上角新建</div>
-        <div
-          v-for="config in kamiConfigs"
-          :key="config.id"
-          class="config-card"
-          :class="{ 'config-card--active': selectedConfigId === config.id }"
-          @click="selectConfig(config)"
-        >
-          <div class="config-card__name">{{ config.aliasName || `配置#${config.id}` }}</div>
-          <div class="config-card__stats">
-            <span class="config-card__stat">总量 {{ config.totalCount }}</span>
-            <span class="config-card__stat used">已用 {{ config.usedCount }}</span>
-            <span class="config-card__stat avail">可用 {{ config.availableCount }}</span>
-            <el-tag v-if="config.alertEnabled === 1" type="warning" size="small" style="margin-left: 4px;">预警</el-tag>
+    <!-- ===== 手机端 ===== -->
+    <template v-if="isMobile">
+
+      <!-- 配置列表视图 -->
+      <div v-if="!selectedConfigId" class="kami-mobile">
+        <header class="kami-mobile__header">
+          <div class="kami-mobile__header-top">
+            <h1 class="kami-page__title">🔑 卡密仓库</h1>
+            <el-button type="primary" size="small" @click="showCreateDialog = true" :disabled="!selectedAccountId">
+              新建
+            </el-button>
           </div>
-          <el-button
-            class="config-card__del"
-            type="danger"
-            text
-            size="small"
-            @click.stop="handleDeleteConfig(config)"
-          >删除</el-button>
+        </header>
+
+        <div class="kami-mobile__list">
+          <div v-if="configLoading" class="kami-page__empty">加载中...</div>
+          <div v-else-if="kamiConfigs.length === 0" class="kami-page__empty">暂无配置，点击右上角新建</div>
+          <div
+            v-for="config in kamiConfigs"
+            :key="config.id"
+            class="config-card"
+            @click="selectConfig(config)"
+          >
+            <div class="config-card__name">{{ config.aliasName || `配置#${config.id}` }}</div>
+            <div class="config-card__stats">
+              <span class="config-card__stat">总量 {{ config.totalCount }}</span>
+              <span class="config-card__stat used">已用 {{ config.usedCount }}</span>
+              <span class="config-card__stat avail">可用 {{ config.availableCount }}</span>
+              <el-tag v-if="config.alertEnabled === 1" type="warning" size="small" style="margin-left: 4px;">预警</el-tag>
+            </div>
+            <el-button
+              class="config-card__del"
+              type="danger"
+              text
+              size="small"
+              @click.stop="handleDeleteConfig(config)"
+            >删除</el-button>
+          </div>
         </div>
       </div>
 
-      <div class="kami-page__main">
-        <div v-if="!selectedConfig" class="kami-page__empty-main">请选择左侧卡密配置</div>
-        <template v-else>
-          <div class="kami-detail__header">
-            <h2>{{ selectedConfig.aliasName || `配置#${selectedConfig.id}` }}</h2>
-            <div class="kami-detail__actions">
-              <el-button @click="showAddDialog = true">添加卡密</el-button>
-              <el-button type="primary" @click="showImportDialog = true">批量导入</el-button>
-              <el-button type="warning" @click="openAlertDialog">预警配置</el-button>
+      <!-- 卡密详情视图 -->
+      <div v-else class="kami-mobile">
+        <header class="kami-mobile__header">
+          <div class="kami-mobile__header-top">
+            <button class="kami-mobile__back" @click="selectedConfigId = null; kamiItems = []">
+              ← 返回
+            </button>
+            <span class="kami-mobile__config-name">{{ selectedConfig?.aliasName || `配置#${selectedConfigId}` }}</span>
+          </div>
+          <div class="kami-mobile__detail-actions">
+            <el-button size="small" @click="showAddDialog = true">添加</el-button>
+            <el-button size="small" type="primary" @click="showImportDialog = true">批量导入</el-button>
+            <el-button size="small" type="warning" @click="openAlertDialog">预警</el-button>
+          </div>
+        </header>
+
+        <div class="kami-mobile__filters">
+          <el-select
+            v-model="filterStatus"
+            placeholder="全部状态"
+            clearable
+            style="flex: 1;"
+            @change="handleFilterChange"
+          >
+            <el-option :value="0" label="未使用" />
+            <el-option :value="1" label="已使用" />
+          </el-select>
+          <el-input
+            v-model="filterKeyword"
+            placeholder="搜索卡密"
+            clearable
+            style="flex: 2;"
+            @keyup.enter="handleFilterChange"
+            @clear="handleFilterChange"
+          />
+          <el-button @click="handleFilterChange">搜索</el-button>
+        </div>
+
+        <div class="kami-mobile__items">
+          <div v-if="itemsLoading" class="kami-page__empty">加载中...</div>
+          <div v-else-if="kamiItems.length === 0" class="kami-page__empty">暂无卡密</div>
+          <div
+            v-for="item in kamiItems"
+            :key="item.id"
+            class="kami-item-card"
+            :class="{ 'kami-item-card--used': item.status === 1 }"
+          >
+            <div class="kami-item-card__content">{{ item.kamiContent }}</div>
+            <div class="kami-item-card__meta">
+              <el-tag :type="item.status === 0 ? 'success' : 'info'" size="small">
+                {{ item.status === 0 ? '未使用' : '已使用' }}
+              </el-tag>
+              <span v-if="item.usedTime" class="kami-item-card__time">{{ item.usedTime }}</span>
+            </div>
+            <div class="kami-item-card__actions">
+              <el-button v-if="item.status === 1" type="warning" text size="small" @click="handleResetItem(item)">重置</el-button>
+              <el-button type="danger" text size="small" @click="handleDeleteItem(item)">删除</el-button>
             </div>
           </div>
-
-          <div class="kami-detail__filters">
-            <el-select
-              v-model="filterStatus"
-              placeholder="全部状态"
-              clearable
-              style="width: 120px; margin-right: 8px;"
-              @change="handleFilterChange"
-            >
-              <el-option :value="0" label="未使用" />
-              <el-option :value="1" label="已使用" />
-            </el-select>
-            <el-input
-              v-model="filterKeyword"
-              placeholder="搜索卡密内容"
-              clearable
-              style="width: 200px; margin-right: 8px;"
-              @keyup.enter="handleFilterChange"
-              @clear="handleFilterChange"
-            />
-            <el-button @click="handleFilterChange">搜索</el-button>
-          </div>
-
-          <div class="kami-detail__table">
-            <div v-if="itemsLoading" class="kami-page__empty">加载中...</div>
-            <el-table v-else :data="kamiItems" stripe style="width: 100%" max-height="500">
-              <el-table-column prop="sortOrder" label="序号" width="70" />
-              <el-table-column prop="kamiContent" label="卡密内容" min-width="200" show-overflow-tooltip />
-              <el-table-column label="状态" width="100">
-                <template #default="{ row }">
-                  <el-tag :type="row.status === 0 ? 'success' : 'info'" size="small">
-                    {{ row.status === 0 ? '未使用' : '已使用' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="orderId" label="订单ID" width="160" show-overflow-tooltip />
-              <el-table-column prop="usedTime" label="使用时间" width="170" />
-              <el-table-column prop="createTime" label="添加时间" width="170" />
-              <el-table-column label="操作" width="160" fixed="right">
-                <template #default="{ row }">
-                  <el-button
-                    v-if="row.status === 1"
-                    type="warning"
-                    text
-                    size="small"
-                    @click="handleResetItem(row)"
-                  >重置</el-button>
-                  <el-button type="danger" text size="small" @click="handleDeleteItem(row)">删除</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </template>
+        </div>
       </div>
-    </div>
 
+    </template>
+
+    <!-- ===== 桌面端 ===== -->
+    <template v-else>
+      <header class="kami-page__header">
+        <h1 class="kami-page__title">🔑 卡密仓库</h1>
+        <div class="kami-page__actions">
+          <el-select
+            v-model="selectedAccountId"
+            placeholder="选择账号"
+            class="account-select"
+            @change="handleAccountChange"
+          >
+            <el-option
+              v-for="acc in accounts"
+              :key="acc.id"
+              :label="acc.accountNote || `账号${acc.id}`"
+              :value="acc.id"
+            />
+          </el-select>
+          <el-button type="primary" @click="showCreateDialog = true" :disabled="!selectedAccountId">
+            新建密钥仓库
+          </el-button>
+        </div>
+      </header>
+
+      <div class="kami-page__body">
+        <div class="kami-page__sidebar">
+          <div v-if="configLoading" class="kami-page__empty">加载中...</div>
+          <div v-else-if="kamiConfigs.length === 0" class="kami-page__empty">暂无配置，点击右上角新建</div>
+          <div
+            v-for="config in kamiConfigs"
+            :key="config.id"
+            class="config-card"
+            :class="{ 'config-card--active': selectedConfigId === config.id }"
+            @click="selectConfig(config)"
+          >
+            <div class="config-card__name">{{ config.aliasName || `配置#${config.id}` }}</div>
+            <div class="config-card__stats">
+              <span class="config-card__stat">总量 {{ config.totalCount }}</span>
+              <span class="config-card__stat used">已用 {{ config.usedCount }}</span>
+              <span class="config-card__stat avail">可用 {{ config.availableCount }}</span>
+              <el-tag v-if="config.alertEnabled === 1" type="warning" size="small" style="margin-left: 4px;">预警</el-tag>
+            </div>
+            <el-button
+              class="config-card__del"
+              type="danger"
+              text
+              size="small"
+              @click.stop="handleDeleteConfig(config)"
+            >删除</el-button>
+          </div>
+        </div>
+
+        <div class="kami-page__main">
+          <div v-if="!selectedConfig" class="kami-page__empty-main">请选择左侧卡密配置</div>
+          <template v-else>
+            <div class="kami-detail__header">
+              <h2>{{ selectedConfig.aliasName || `配置#${selectedConfig.id}` }}</h2>
+              <div class="kami-detail__actions">
+                <el-button @click="showAddDialog = true">添加卡密</el-button>
+                <el-button type="primary" @click="showImportDialog = true">批量导入</el-button>
+                <el-button type="warning" @click="openAlertDialog">预警配置</el-button>
+              </div>
+            </div>
+
+            <div class="kami-detail__filters">
+              <el-select
+                v-model="filterStatus"
+                placeholder="全部状态"
+                clearable
+                style="width: 120px; margin-right: 8px;"
+                @change="handleFilterChange"
+              >
+                <el-option :value="0" label="未使用" />
+                <el-option :value="1" label="已使用" />
+              </el-select>
+              <el-input
+                v-model="filterKeyword"
+                placeholder="搜索卡密内容"
+                clearable
+                style="width: 200px; margin-right: 8px;"
+                @keyup.enter="handleFilterChange"
+                @clear="handleFilterChange"
+              />
+              <el-button @click="handleFilterChange">搜索</el-button>
+            </div>
+
+            <div class="kami-detail__table">
+              <div v-if="itemsLoading" class="kami-page__empty">加载中...</div>
+              <el-table v-else :data="kamiItems" stripe style="width: 100%" max-height="500">
+                <el-table-column prop="sortOrder" label="序号" width="70" />
+                <el-table-column prop="kamiContent" label="卡密内容" min-width="200" show-overflow-tooltip />
+                <el-table-column label="状态" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="row.status === 0 ? 'success' : 'info'" size="small">
+                      {{ row.status === 0 ? '未使用' : '已使用' }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="orderId" label="订单ID" width="160" show-overflow-tooltip />
+                <el-table-column prop="usedTime" label="使用时间" width="170" />
+                <el-table-column prop="createTime" label="添加时间" width="170" />
+                <el-table-column label="操作" width="160" fixed="right">
+                  <template #default="{ row }">
+                    <el-button
+                      v-if="row.status === 1"
+                      type="warning"
+                      text
+                      size="small"
+                      @click="handleResetItem(row)"
+                    >重置</el-button>
+                    <el-button type="danger" text size="small" @click="handleDeleteItem(row)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== 弹窗（共用） ===== -->
     <el-dialog v-model="showCreateDialog" title="新建卡密配置" width="460" :close-on-click-modal="false">
       <el-form label-width="80px">
         <el-form-item label="别名">
@@ -505,7 +646,10 @@ onMounted(() => {
   padding: 16px;
   background: #fff;
   overflow: hidden;
+  box-sizing: border-box;
 }
+
+/* ===== 桌面端 ===== */
 .kami-page__header {
   display: flex;
   justify-content: space-between;
@@ -583,6 +727,7 @@ onMounted(() => {
   font-size: 12px;
   color: #6e6e73;
   margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 .config-card__stat.used { color: #ff9500; }
 .config-card__stat.avail { color: #34c759; }
@@ -619,22 +764,120 @@ onMounted(() => {
   min-height: 0;
   overflow: auto;
 }
-@media screen and (max-width: 768px) {
-  .kami-page__body {
-    flex-direction: column;
-  }
-  .kami-page__sidebar {
-    width: 100%;
-    border-right: none;
-    padding-right: 0;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    padding-bottom: 12px;
-    max-height: 200px;
-  }
-  .kami-page__header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
+
+/* ===== 手机端 ===== */
+.kami-mobile {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.kami-mobile__header {
+  flex-shrink: 0;
+  padding: 0 0 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kami-mobile__header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kami-mobile__select {
+  width: 100%;
+}
+
+.kami-mobile__back {
+  background: none;
+  border: none;
+  color: #007aff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.kami-mobile__config-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d1d1f;
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+
+.kami-mobile__detail-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.kami-mobile__filters {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.kami-mobile__list {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.kami-mobile__list::-webkit-scrollbar { display: none; }
+
+.kami-mobile__items {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.kami-mobile__items::-webkit-scrollbar { display: none; }
+
+/* 卡密条目卡片 */
+.kami-item-card {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kami-item-card:nth-child(even) {
+  background: rgba(0,0,0,0.016);
+}
+.kami-item-card--used {
+  opacity: 0.6;
+}
+.kami-item-card__content {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d1d1f;
+  word-break: break-all;
+}
+.kami-item-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kami-item-card__time {
+  font-size: 11px;
+  color: #86868b;
+}
+.kami-item-card__actions {
+  display: flex;
+  gap: 4px;
 }
 </style>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, inject, defineComponent, h } from 'vue'
 import { useMessageManager } from './useMessageManager'
 import './messages.css'
+import '@/styles/header-selectors.css'
 
 import IconMessage from '@/components/icons/IconMessage.vue'
 import IconRefresh from '@/components/icons/IconRefresh.vue'
@@ -88,10 +89,66 @@ const handleImgError = (e: Event) => {
   img.style.display = 'none'
 }
 
-onMounted(() => {
-  loadAccounts()
+// 注入导航栏内容
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            selectedAccountId.value = val ? parseInt(val) : null
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !selectedAccountId.value }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: selectedAccountId.value === acc.id
+            }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ]),
+      h('button', {
+        class: ['header-toggle-btn', { 'header-toggle-btn--on': filterCurrentAccount.value }],
+        title: '隐藏我发送的',
+        onClick: () => {
+          filterCurrentAccount.value = !filterCurrentAccount.value
+          currentPage.value = 1
+          loadMessages()
+        }
+      }, [
+        h('span', { class: 'header-toggle-track' }, [
+          h('span', { class: 'header-toggle-thumb' })
+        ])
+      ]),
+      h('button', {
+        class: ['header-refresh-btn', { 'header-refresh-btn--loading': loading.value }],
+        disabled: loading.value,
+        onClick: loadMessages
+      }, [
+        h(IconRefresh, { class: 'header-refresh-icon' })
+      ])
+    ])
+  }
+})
+
+onMounted(async () => {
   checkScreenSize()
   window.addEventListener('resize', checkScreenSize)
+  if (setHeaderContent) {
+    setHeaderContent(HeaderSelectors)
+  }
+  await loadAccounts()
+  // 账号加载完后重新注入，确保选项渲染
+  if (setHeaderContent) {
+    setHeaderContent(HeaderSelectors)
+  }
 })
 
 onBeforeUnmount(() => {
@@ -234,13 +291,13 @@ const checkScreenSize = () => {
       <!-- Mobile: Goods View -->
       <div v-show="mobileView === 'goods'" class="mobile-goods">
         <div class="messages__header" style="margin-bottom: 0; border-bottom: 1px solid var(--d-border);">
-          <div class="messages__title-row">
+          <div class="messages__title-row mobile-hidden">
             <div class="messages__title-icon">
               <IconMessage />
             </div>
             <h1 class="messages__title">消息</h1>
           </div>
-          <div class="messages__actions">
+          <div class="messages__actions mobile-hidden">
             <div class="messages__select-wrap">
               <select
                 v-model="selectedAccountId"
@@ -333,7 +390,7 @@ const checkScreenSize = () => {
             />
             <span class="mobile-messages__goods-name">{{ selectedGoodsForMobile.item.title }}</span>
           </div>
-          <button class="btn btn--secondary" style="height:32px;padding:0 12px;" @click="loadMessages">
+          <button class="mobile-messages__refresh" @click="loadMessages">
             <IconRefresh />
           </button>
         </div>
@@ -442,59 +499,72 @@ const checkScreenSize = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  font-size: 13px;
+  padding: 8px 16px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--d-text-secondary, #6e6e73);
+  color: var(--d-text-tertiary, #86868b);
   background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
+  letter-spacing: 0.01em;
 }
 
 .mobile-goods__count {
   font-size: 12px;
   color: var(--d-text-tertiary, #86868b);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .mobile-goods__list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 12px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-goods__list::-webkit-scrollbar {
+  display: none;
 }
 
 .mobile-goods__item {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
-  border: 1px solid transparent;
-  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* 斑马线：偶数行浅灰背景 */
+.mobile-goods__item:nth-child(even) {
+  background: rgba(0, 0, 0, 0.018);
 }
 
 .mobile-goods__item:active {
-  transform: scale(0.98);
+  background: rgba(0, 122, 255, 0.06);
 }
 
 .mobile-goods__item--active {
-  background: rgba(0, 122, 255, 0.06);
-  border-color: rgba(0, 122, 255, 0.15);
+  background: rgba(0, 122, 255, 0.07) !important;
+  border-bottom-color: rgba(0, 122, 255, 0.12);
+  box-shadow: inset 3px 0 0 #007aff;
 }
 
 .mobile-goods__thumb {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .mobile-goods__thumb img {
@@ -512,6 +582,9 @@ const checkScreenSize = () => {
 .mobile-goods__info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .mobile-goods__name {
@@ -521,7 +594,7 @@ const checkScreenSize = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .mobile-goods__id {
@@ -574,11 +647,10 @@ const checkScreenSize = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  padding-top: max(8px, env(safe-area-inset-top, 8px));
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(248, 248, 248, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -587,41 +659,43 @@ const checkScreenSize = () => {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 36px;
-  padding: 0 8px;
-  font-size: 16px;
+  height: 34px;
+  padding: 0 6px;
+  font-size: 15px;
   font-weight: 500;
   color: #007aff;
   background: none;
   border: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .mobile-messages__back svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .mobile-messages__goods {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .mobile-messages__goods-img {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .mobile-messages__goods-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: #1d1d1f;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -632,6 +706,37 @@ const checkScreenSize = () => {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-messages__body::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-messages__refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-messages__refresh:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.mobile-messages__refresh svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ============================================================

@@ -9,6 +9,7 @@ import IconSend from '@/components/icons/IconSend.vue'
 import IconRobot from '@/components/icons/IconRobot.vue'
 import IconImage from '@/components/icons/IconImage.vue'
 import IconCheck from '@/components/icons/IconCheck.vue'
+import IconSparkle from '@/components/icons/IconSparkle.vue'
 
 interface Props {
   goodsList: GoodsItemWithConfig[]
@@ -76,6 +77,7 @@ const handleImgError = (e: Event) => {
       class="goods-card"
       @click="emit('view', item.item.xyGoodId)"
     >
+      <!-- 图片区域（含悬浮标题） -->
       <div class="goods-card__image-wrap">
         <img
           v-if="item.item.coverPic"
@@ -86,6 +88,8 @@ const handleImgError = (e: Event) => {
         <div v-else class="goods-card__image-placeholder">
           <IconImage />
         </div>
+
+        <!-- 状态标签 -->
         <span
           class="goods-card__status"
           :style="{
@@ -95,57 +99,59 @@ const handleImgError = (e: Event) => {
         >
           {{ getGoodsStatusText(item.item.status).text }}
         </span>
+
+        <!-- 玻璃渐变悬浮层：标题 + 价格 -->
+        <div class="goods-card__overlay">
+          <div class="goods-card__title-wrap">
+            <div class="goods-card__title">{{ item.item.title }}</div>
+          </div>
+          <div class="goods-card__meta">
+            <span class="goods-card__price">{{ formatPrice(item.item.soldPrice) }}</span>
+            <div class="goods-card__switches">
+              <button
+                class="goods-card__switch"
+                :class="{ 'goods-card__switch--on': item.xianyuAutoDeliveryOn === 1 }"
+                @click.stop="emit('toggleAutoDelivery', item, item.xianyuAutoDeliveryOn !== 1)"
+              >
+                <IconSend />
+                <span>发货</span>
+              </button>
+              <span
+                v-if="item.xianyuAutoDeliveryOn === 1"
+                class="goods-card__type-tag"
+                :class="item.autoDeliveryType === 2 ? 'goods-card__type-tag--kami' : 'goods-card__type-tag--text'"
+              >
+                {{ item.autoDeliveryType === 2 ? '卡密' : '文本' }}
+              </span>
+              <button
+                class="goods-card__switch"
+                :class="{ 'goods-card__switch--on': item.xianyuAutoReplyOn === 1 }"
+                @click.stop="emit('toggleAutoReply', item, item.xianyuAutoReplyOn !== 1)"
+              >
+                <IconRobot />
+                <span>回复</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="goods-card__body">
-        <div class="goods-card__title">{{ item.item.title }}</div>
-        <div class="goods-card__meta">
-          <span class="goods-card__price">{{ formatPrice(item.item.soldPrice) }}</span>
-          <span class="goods-card__id">{{ item.item.xyGoodId }}</span>
-        </div>
-
-        <div class="goods-card__switches">
-          <button
-            class="goods-card__switch"
-            :class="{ 'goods-card__switch--on': item.xianyuAutoDeliveryOn === 1 }"
-            @click.stop="emit('toggleAutoDelivery', item, item.xianyuAutoDeliveryOn !== 1)"
-          >
-            <IconSend />
-            <span>发货</span>
-          </button>
-          <span
-            v-if="item.xianyuAutoDeliveryOn === 1"
-            class="goods-card__type-tag"
-            :class="item.autoDeliveryType === 2 ? 'goods-card__type-tag--kami' : 'goods-card__type-tag--text'"
-          >
-            {{ item.autoDeliveryType === 2 ? '卡密' : '文本' }}
-          </span>
-          <button
-            class="goods-card__switch"
-            :class="{ 'goods-card__switch--on': item.xianyuAutoReplyOn === 1 }"
-            @click.stop="emit('toggleAutoReply', item, item.xianyuAutoReplyOn !== 1)"
-          >
-            <IconRobot />
-            <span>回复</span>
-          </button>
-        </div>
-
-        <div class="goods-card__actions">
-          <button
-            class="goods-card__action goods-card__action--config"
-            @click.stop="emit('configAutoDelivery', item)"
-          >
-            <IconSparkle />
-            <span>配置</span>
-          </button>
-          <button
-            class="goods-card__action goods-card__action--delete"
-            @click.stop="emit('delete', item.item.xyGoodId, item.item.title)"
-          >
-            <IconTrash />
-            <span>删除</span>
-          </button>
-        </div>
+      <!-- 底部操作栏 -->
+      <div class="goods-card__actions">
+        <button
+          class="goods-card__action goods-card__action--config"
+          @click.stop="emit('configAutoDelivery', item)"
+        >
+          <IconSparkle />
+          <span>配置</span>
+        </button>
+        <button
+          class="goods-card__action goods-card__action--delete"
+          @click.stop="emit('delete', item.item.xyGoodId, item.item.title)"
+        >
+          <IconTrash />
+          <span>删除</span>
+        </button>
       </div>
     </div>
 
@@ -319,7 +325,7 @@ const handleImgError = (e: Event) => {
 .goods-card__image-wrap {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 220px;
   background: rgba(0, 0, 0, 0.03);
   display: flex;
   align-items: center;
@@ -352,86 +358,118 @@ const handleImgError = (e: Event) => {
   padding: 3px 8px;
   border-radius: 12px;
   line-height: 1;
+  z-index: 2;
 }
 
-.goods-card__body {
-  padding: 12px;
+/* 玻璃渐变悬浮层 */
+.goods-card__overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  backdrop-filter: blur(6px) saturate(1.4);
+  -webkit-backdrop-filter: blur(6px) saturate(1.4);
+  background: rgba(0, 0, 0, 0.15);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 30%);
+}
+
+/* 渐变过渡区：标题区域 */
+.goods-card__title-wrap {
+  padding: 24px 12px 6px;
 }
 
 .goods-card__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--c-text-1);
+  color: #fff;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  margin-bottom: 8px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
+/* 底部价格 + 按钮行 */
 .goods-card__meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  padding: 6px 12px 12px;
 }
 
 .goods-card__price {
   font-size: 16px;
   font-weight: 700;
-  color: var(--c-price);
+  color: #fff;
+  flex-shrink: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .goods-card__id {
   font-size: 11px;
-  color: var(--c-text-3);
+  color: rgba(255, 255, 255, 0.6);
   font-family: 'SF Mono', 'Menlo', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.goods-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .goods-card__switches {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .goods-card__switch {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
   font-weight: 500;
-  color: var(--c-text-3);
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid transparent;
-  border-radius: 15px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 13px;
   cursor: pointer;
   transition: all var(--c-ease);
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .goods-card__switch svg {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 
 .goods-card__switch--on {
-  color: var(--c-accent);
-  background: rgba(0, 122, 255, 0.08);
-  border-color: rgba(0, 122, 255, 0.2);
+  color: #fff;
+  background: rgba(52, 199, 89, 0.5);
+  border-color: rgba(52, 199, 89, 0.6);
 }
 
+/* 底部操作栏 */
 .goods-card__actions {
   display: flex;
   gap: 8px;
-  padding-top: 10px;
+  padding: 10px 12px;
   border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
 }
 
 .goods-card__action {
@@ -791,15 +829,11 @@ const handleImgError = (e: Event) => {
   }
 
   .goods-card__image-wrap {
-    height: 140px;
-  }
-
-  .goods-card__body {
-    padding: 10px;
+    height: 190px;
   }
 
   .goods-card__title {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .goods-card__price {
@@ -807,8 +841,8 @@ const handleImgError = (e: Event) => {
   }
 
   .goods-card__switch {
-    height: 28px;
-    padding: 0 8px;
+    height: 24px;
+    padding: 0 7px;
     font-size: 11px;
   }
 

@@ -219,42 +219,47 @@ const getCookieText = (status?: number) => {
 }
 
 /* ============================================================
-   Mobile Card View
+   Mobile Card View (iOS 26 Glass Card Style)
    ============================================================ */
 .card-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: 16px;
   padding-bottom: 24px;
-  min-height: 100%;
+  background: transparent;
+  /* 不设置 min-height，让内容自然流动 */
 }
 
 .conn-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--c-r-md);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
   padding: 16px;
   transition: all var(--c-ease);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .conn-card--active {
-  border-color: var(--c-accent);
-  box-shadow: 0 0 0 1px var(--c-accent), 0 2px 8px rgba(0, 122, 255, 0.12);
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 @media (hover: hover) {
   .conn-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-color: rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 255, 255, 0.6);
   }
 }
 
 .conn-card:active {
-  transform: scale(0.985);
+  transform: scale(0.98);
 }
 
 .conn-card__header {
@@ -263,21 +268,22 @@ const getCookieText = (status?: number) => {
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--c-border);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .conn-card__avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--c-text-1);
+  background: linear-gradient(135deg, #007aff 0%, #0051d5 100%);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .conn-card__info {
@@ -311,9 +317,13 @@ const getCookieText = (status?: number) => {
   gap: 4px;
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 20px;
   line-height: 1;
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--c-accent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .conn-card__status svg {
@@ -376,7 +386,7 @@ const getCookieText = (status?: number) => {
   display: flex;
   justify-content: flex-end;
   padding-top: 12px;
-  border-top: 1px solid var(--c-border);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .conn-card__action {
@@ -555,16 +565,10 @@ const getCookieText = (status?: number) => {
 /* ============================================================
    Responsive
    ============================================================ */
-@media screen and (max-width: 768px) {
-  .grid-list {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-}
-
 @media screen and (max-width: 480px) {
   .card-list {
     padding: 12px;
-    gap: 8px;
+    gap: 10px;
   }
 
   .conn-card {
@@ -572,13 +576,39 @@ const getCookieText = (status?: number) => {
   }
 
   .conn-card__avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
 
   .conn-card__name {
     font-size: 14px;
+  }
+
+  .conn-card__unb {
+    font-size: 12px;
+  }
+
+  .grid-list {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .grid-card {
+    padding: 12px;
+  }
+
+  .grid-card__avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .grid-card__name {
+    font-size: 13px;
+  }
+
+  .grid-card__id {
+    font-size: 11px;
   }
 }
 </style>

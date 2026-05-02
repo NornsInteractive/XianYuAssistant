@@ -167,6 +167,18 @@
   transform: none;
 }
 
+.btn--full {
+  width: 100%;
+}
+
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
 /* --- Content Card --- */
 .connection__content {
   flex: 1;
@@ -189,6 +201,7 @@
   padding: var(--d-space-4) var(--d-space-5);
   border-bottom: 1px solid var(--d-border);
   flex-shrink: 0;
+  gap: var(--d-space-3);
 }
 
 .connection__list-title {
@@ -202,21 +215,11 @@
   overflow-y: auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+  scrollbar-width: none;
 }
 
 .connection__scroll-wrap::-webkit-scrollbar {
-  width: 6px;
-}
-
-.connection__scroll-wrap::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.connection__scroll-wrap::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 3px;
+  display: none;
 }
 
 /* --- Mobile Hidden --- */
@@ -228,14 +231,37 @@
    Responsive
    ============================================================ */
 
+/* Tablet and Desktop (>= 768px) */
+@media screen and (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+
+  .desktop-only {
+    display: block !important;
+  }
+}
+
 /* Phone (< 768px) */
 @media screen and (max-width: 768px) {
   .connection {
     padding: var(--d-space-3);
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
   }
 
   .mobile-hidden {
     display: none !important;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
   }
 
   .connection__header {
@@ -243,6 +269,8 @@
     align-items: flex-start;
     gap: var(--d-space-3);
     margin-bottom: var(--d-space-3);
+    padding: 0 var(--d-space-4);
+    padding-top: var(--d-space-3);
   }
 
   .connection__actions {
@@ -253,8 +281,20 @@
     flex: 1;
   }
 
+  .connection__content {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+
   .connection__toolbar {
     padding: var(--d-space-3) var(--d-space-4);
+    gap: var(--d-space-2);
   }
 
   .connection__list-title {
@@ -265,11 +305,20 @@
 /* Small phone (< 480px) */
 @media screen and (max-width: 480px) {
   .connection {
-    padding: var(--d-space-2);
+    padding: 0;
+  }
+
+  .connection__header {
+    padding: 0 var(--d-space-3);
+    padding-top: var(--d-space-2);
   }
 
   .btn {
     height: 34px;
     font-size: 12px;
+  }
+
+  .connection__toolbar {
+    padding: var(--d-space-2) var(--d-space-3);
   }
 }

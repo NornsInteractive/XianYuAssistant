@@ -49,7 +49,12 @@ const generateQR = async () => {
 }
 
 const startPolling = () => {
+  if (!sessionId.value) {
+    showError('会话ID为空，无法查询状态')
+    return
+  }
   pollTimer = window.setInterval(async () => {
+    if (!sessionId.value) return
     try {
       const response = await getQRCodeStatus(sessionId.value)
       if (response.code === 0 || response.code === 200) {

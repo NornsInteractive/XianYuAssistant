@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { inject, defineComponent, h, onMounted } from 'vue'
 import { useAutoReply } from './useAutoReply'
 import './auto-reply.css'
+import '@/styles/header-selectors.css'
 
 import IconChat from '@/components/icons/IconChat.vue'
 import IconChevronDown from '@/components/icons/IconChevronDown.vue'
@@ -87,6 +89,39 @@ const {
   handleSyncDetailToFixedMaterial,
   toggleFixedMaterialExpanded
 } = useAutoReply()
+
+// 导航栏注入
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            selectedAccountId.value = val ? parseInt(val) : null
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !selectedAccountId.value }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: selectedAccountId.value === acc.id
+            }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ])
+    ])
+  }
+})
+
+onMounted(() => {
+  if (setHeaderContent) setHeaderContent(HeaderSelectors)
+})
 </script>
 
 <template>

@@ -257,7 +257,7 @@ export function useAutoDelivery() {
           }
         }
 
-        if (goodsCurrentPage.value === 1 && goodsList.value.length > 0 && !selectedGoods.value) {
+        if (goodsCurrentPage.value === 1 && goodsList.value.length > 0 && !selectedGoods.value && !isMobile.value) {
           await selectGoods(goodsList.value[0]!)
         }
 

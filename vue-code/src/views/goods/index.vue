@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref, computed, inject, defineComponent, h } from 'vue'
 import { useGoodsManager } from './useGoodsManager'
 import './goods.css'
+import '@/styles/header-selectors.css'
 
 import IconShoppingBag from '@/components/icons/IconShoppingBag.vue'
 import IconRefresh from '@/components/icons/IconRefresh.vue'
@@ -43,8 +44,137 @@ const {
   executeDelete
 } = useGoodsManager()
 
+// 下拉刷新相关状态
+const pullRefreshState = ref<'idle' | 'pulling' | 'ready' | 'refreshing'>('idle')
+const pullDistance = ref(0)
+const tableWrapRef = ref<HTMLElement | null>(null)
+const startY = ref(0)
+const isMobile = ref(false)
+
+// 检测是否为手机模式
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 计算下拉刷新的显示距离
+const pullRefreshDistance = computed(() => {
+  const maxDistance = 80
+  return Math.min(pullDistance.value, maxDistance)
+})
+
+// 处理触摸开始
+const handleTouchStart = (e: TouchEvent) => {
+  if (!isMobile.value || !tableWrapRef.value) return
+  
+  // 只在列表顶部时才允许下拉
+  if (tableWrapRef.value.scrollTop === 0) {
+    startY.value = e.touches[0]?.clientY ?? 0
+    pullDistance.value = 0
+    pullRefreshState.value = 'idle'
+  }
+}
+
+// 处理触摸移动
+const handleTouchMove = (e: TouchEvent) => {
+  if (!isMobile.value || !tableWrapRef.value || startY.value === 0) return
+  
+  if (tableWrapRef.value.scrollTop === 0) {
+    const currentY = e.touches[0]?.clientY ?? 0
+    const distance = currentY - startY.value
+    
+    if (distance > 0) {
+      e.preventDefault()
+      pullDistance.value = distance
+      
+      if (distance < 60) {
+        pullRefreshState.value = 'pulling'
+      } else {
+        pullRefreshState.value = 'ready'
+      }
+    }
+  }
+}
+
+// 处理触摸结束
+const handleTouchEnd = async () => {
+  if (!isMobile.value) return
+  
+  if (pullRefreshState.value === 'ready' && pullDistance.value >= 60) {
+    pullRefreshState.value = 'refreshing'
+    await handleRefresh()
+    // 动画反弹
+    pullDistance.value = 0
+    pullRefreshState.value = 'idle'
+  } else {
+    // 回弹动画
+    pullDistance.value = 0
+    pullRefreshState.value = 'idle'
+  }
+  
+  startY.value = 0
+}
+
+// 获取导航栏内容设置函数
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+// 创建导航栏选择器组件
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          value: selectedAccountId.value,
+          onChange: (e: Event) => {
+            const target = e.target as HTMLSelectElement
+            selectedAccountId.value = target.value ? parseInt(target.value) : null
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true }, '选择账号'),
+          ...accounts.value.map(acc => 
+            h('option', { value: acc.id.toString() }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ]),
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          value: statusFilter.value,
+          onChange: (e: Event) => {
+            const target = e.target as HTMLSelectElement
+            statusFilter.value = target.value
+            handleStatusFilter()
+          }
+        }, [
+          h('option', { value: '' }, '全部状态'),
+          h('option', { value: '0' }, '在售'),
+          h('option', { value: '1' }, '已下架'),
+          h('option', { value: '2' }, '已售出')
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ]),
+      h('button', {
+        class: ['header-refresh-btn', { 'header-refresh-btn--loading': refreshing.value || syncing.value }],
+        disabled: refreshing.value || syncing.value || !selectedAccountId.value,
+        onClick: handleRefresh
+      }, [
+        h(IconRefresh, { class: 'header-refresh-icon' })
+      ])
+    ])
+  }
+})
+
 onMounted(() => {
   loadAccounts()
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  
+  // 只在手机模式下设置导航栏内容
+  if (setHeaderContent) {
+    setHeaderContent(HeaderSelectors)
+  }
 })
 
 // 分页按钮列表
@@ -65,15 +195,16 @@ const getPageButtons = () => {
   <div class="goods">
     <!-- Header -->
     <div class="goods__header">
-      <div class="goods__title-row">
+      <div class="goods__title-row desktop-only">
         <div class="goods__title-icon">
           <IconShoppingBag />
         </div>
         <h1 class="goods__title">商品管理</h1>
       </div>
+
       <div class="goods__actions">
         <button
-          class="btn btn--primary"
+          class="btn btn--primary desktop-only"
           :class="{ 'btn--loading': refreshing || syncing }"
           :disabled="refreshing || syncing || !selectedAccountId"
           @click="handleRefresh"
@@ -95,8 +226,8 @@ const getPageButtons = () => {
       </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="goods__filter-bar">
+    <!-- Filter Bar (Desktop Only) -->
+    <div class="goods__filter-bar desktop-only">
       <!-- Account Select -->
       <div class="goods__select-wrap">
         <select
@@ -147,8 +278,35 @@ const getPageButtons = () => {
         </span>
       </div>
 
+      <!-- Pull Refresh Indicator (Mobile Only) -->
+      <div 
+        v-if="isMobile && pullDistance > 0"
+        class="goods__pull-refresh"
+        :style="{ height: `${pullRefreshDistance}px` }"
+        :class="{
+          'goods__pull-refresh--pulling': pullRefreshState === 'pulling',
+          'goods__pull-refresh--ready': pullRefreshState === 'ready',
+          'goods__pull-refresh--refreshing': pullRefreshState === 'refreshing'
+        }"
+      >
+        <div class="goods__pull-refresh-content">
+          <div class="goods__pull-refresh-icon">
+            <IconRefresh />
+          </div>
+          <div class="goods__pull-refresh-text">
+            {{ pullRefreshState === 'pulling' ? '下拉刷新' : pullRefreshState === 'ready' ? '释放刷新' : '刷新中...' }}
+          </div>
+        </div>
+      </div>
+
       <!-- Table/Cards -->
-      <div class="goods__table-wrap">
+      <div 
+        ref="tableWrapRef"
+        class="goods__table-wrap"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+      >
         <GoodsTable
           :goods-list="goodsList"
           :loading="loading"

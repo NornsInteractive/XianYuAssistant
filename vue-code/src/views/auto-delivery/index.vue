@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { inject, defineComponent, h, onMounted } from 'vue'
 import { useAutoDelivery } from './useAutoDelivery'
 import './auto-delivery.css'
+import '@/styles/header-selectors.css'
 
 import IconTruck from '@/components/icons/IconTruck.vue'
 import IconChevronDown from '@/components/icons/IconChevronDown.vue'
@@ -41,6 +43,7 @@ const {
   isMobile,
   mobileView,
   confirmDialog,
+  loadAccounts,
   handleAccountChange,
   selectGoods,
   saveConfig,
@@ -72,6 +75,41 @@ const {
   copyConfirmShipmentUrl,
   copyConfirmShipmentParams
 } = useAutoDelivery()
+
+// 注入导航栏内容 — inject 必须在 setup 顶层
+const setHeaderContent = inject<(content: any) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            selectedAccountId.value = val ? parseInt(val) : null
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !selectedAccountId.value }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: selectedAccountId.value === acc.id
+            }, acc.accountNote || acc.unb)
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ])
+    ])
+  }
+})
+
+onMounted(() => {
+  if (setHeaderContent) {
+    setHeaderContent(HeaderSelectors)
+  }
+})
 </script>
 
 <template>
@@ -396,7 +434,7 @@ const {
                   v-model="selectedKamiConfigId"
                   placeholder="请选择卡密配置"
                   clearable
-                  style="width: 100%;"
+                  style="width: 280px; max-width: 100%;"
                   popper-class="kami-config-select-popper"
                 >
                   <el-option

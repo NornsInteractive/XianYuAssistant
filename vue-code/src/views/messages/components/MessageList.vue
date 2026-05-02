@@ -249,26 +249,31 @@ const formatMessageTime = (timestamp: number) => {
 .card-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 0;
+  padding: 0;
   min-height: 100%;
 }
 
 .msg-card {
   background: #fff;
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--c-r-md);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  transition: background 0.15s ease;
   overflow: hidden;
-  transition: all var(--c-ease);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.msg-card:nth-child(even) {
+  background: rgba(0, 0, 0, 0.016);
+}
+
+.msg-card:active {
+  background: rgba(0, 122, 255, 0.04);
 }
 
 .msg-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--c-border);
+  padding: 10px 16px 4px;
 }
 
 .msg-card__type {
@@ -289,9 +294,10 @@ const formatMessageTime = (timestamp: number) => {
 .msg-card__sender {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px 0;
+  gap: 5px;
+  padding: 2px 16px 0;
   font-size: 12px;
+  font-weight: 500;
   color: var(--c-text-2);
   min-width: 0;
   overflow: hidden;
@@ -306,30 +312,30 @@ const formatMessageTime = (timestamp: number) => {
 .msg-card__sender svg {
   width: 12px;
   height: 12px;
+  flex-shrink: 0;
 }
 
 .msg-card__content {
-  padding: 8px 12px;
+  padding: 6px 16px 8px;
   font-size: 13px;
   color: var(--c-text-1);
-  line-height: 1.5;
+  line-height: 1.55;
   word-break: break-word;
-  background: rgba(0, 0, 0, 0.02);
-  margin: 8px 12px;
-  border-radius: 6px;
 }
 
 .msg-card__footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  padding: 6px 12px 8px;
+  padding: 0 12px 10px;
+  gap: 6px;
 }
 
 .msg-card__id {
   font-size: 11px;
   color: var(--c-text-3);
   font-family: 'SF Mono', 'Menlo', monospace;
+  margin-right: auto;
 }
 
 .msg-card__actions {
@@ -342,7 +348,7 @@ const formatMessageTime = (timestamp: number) => {
   align-items: center;
   gap: 4px;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 12px;
   font-weight: 500;
   background: transparent;
@@ -360,19 +366,21 @@ const formatMessageTime = (timestamp: number) => {
 .msg-card__btn--context {
   color: #5856d6;
   border: 1px solid rgba(88, 86, 214, 0.2);
+  background: rgba(88, 86, 214, 0.05);
 }
 
 .msg-card__btn--reply {
   color: var(--c-accent);
   border: 1px solid rgba(0, 122, 255, 0.2);
+  background: rgba(0, 122, 255, 0.05);
 }
 
 @media (hover: hover) {
   .msg-card__btn--context:hover {
-    background: rgba(88, 86, 214, 0.06);
+    background: rgba(88, 86, 214, 0.1);
   }
   .msg-card__btn--reply:hover {
-    background: rgba(0, 122, 255, 0.06);
+    background: rgba(0, 122, 255, 0.1);
   }
 }
 

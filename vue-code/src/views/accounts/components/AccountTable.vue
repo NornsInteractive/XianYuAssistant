@@ -198,54 +198,67 @@ const getStatusBg = (status: number) => {
 }
 
 /* ============================================================
-   Mobile Card View
+   Mobile List View (iOS 26 Glass Card Style)
    ============================================================ */
 .card-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: 16px;
   padding-bottom: 24px;
   min-height: 100%;
+  background: transparent;
 }
 
 .account-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border-strong);
-  border-radius: var(--c-r-md);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
   padding: 16px;
   transition: all var(--c-ease);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 @media (hover: hover) {
   .account-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-color: rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 255, 255, 0.6);
   }
+}
+
+.account-card:active {
+  transform: scale(0.98);
 }
 
 .account-card__header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--c-border);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .account-card__avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--c-text-1);
+  background: linear-gradient(135deg, #007aff 0%, #0051d5 100%);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
 .account-card__info {
@@ -253,52 +266,64 @@ const getStatusBg = (status: number) => {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .account-card__name {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--c-text-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .account-card__unb {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--c-text-3);
-  margin-top: 2px;
-  line-height: 1.3;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-card__status {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 13px;
   font-weight: 500;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 20px;
   line-height: 1;
+  background: rgba(0, 122, 255, 0.15);
+  color: var(--c-accent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .account-card__status svg {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
 }
 
 .account-card__body {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .account-card__row {
   display: flex;
-  align-items: center;
-  padding: 5px 0;
-  font-size: 13px;
+  flex-direction: column;
   gap: 4px;
+  font-size: 13px;
   line-height: 1.4;
 }
 
@@ -320,35 +345,39 @@ const getStatusBg = (status: number) => {
 .account-card__label {
   color: var(--c-text-3);
   flex-shrink: 0;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .account-card__value {
-  color: var(--c-text-2);
-  margin-left: auto;
+  color: var(--c-text-1);
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
+  font-size: 14px;
 }
 
 .account-card__footer {
   display: flex;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--c-border);
+  gap: 10px;
+  padding-top: 0;
+  border-top: none;
 }
 
 .account-card__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   flex: 1;
-  height: 36px;
-  font-size: 13px;
+  height: 40px;
+  font-size: 14px;
   font-weight: 500;
-  border-radius: var(--c-r-sm);
-  border: 1px solid;
+  border-radius: 10px;
+  border: none;
   cursor: pointer;
   transition: all var(--c-ease);
   -webkit-tap-highlight-color: transparent;
@@ -356,33 +385,29 @@ const getStatusBg = (status: number) => {
 }
 
 .account-card__btn svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }
 
 .account-card__btn--edit {
-  color: var(--c-accent);
-  border-color: rgba(0, 122, 255, 0.2);
+  color: white;
+  background: var(--c-accent);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
 }
 
-@media (hover: hover) {
-  .account-card__btn--edit:hover {
-    background: rgba(0, 122, 255, 0.06);
-  }
+.account-card__btn--edit:active {
+  background: #0051d5;
+  transform: scale(0.97);
 }
 
 .account-card__btn--delete {
-  color: var(--c-danger);
-  border-color: rgba(255, 59, 48, 0.2);
+  color: white;
+  background: var(--c-danger);
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
 }
 
-@media (hover: hover) {
-  .account-card__btn--delete:hover {
-    background: rgba(255, 59, 48, 0.06);
-  }
-}
-
-.account-card__btn:active {
+.account-card__btn--delete:active {
+  background: #e63c2e;
   transform: scale(0.97);
 }
 
@@ -570,7 +595,7 @@ const getStatusBg = (status: number) => {
 @media screen and (max-width: 480px) {
   .card-list {
     padding: 12px;
-    gap: 8px;
+    gap: 10px;
   }
 
   .account-card {
@@ -578,18 +603,39 @@ const getStatusBg = (status: number) => {
   }
 
   .account-card__avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
   }
 
   .account-card__name {
-    font-size: 14px;
+    font-size: 15px;
+  }
+
+  .account-card__unb {
+    font-size: 12px;
+  }
+
+  .account-card__body {
+    gap: 10px 12px;
+    padding: 10px 0;
+  }
+
+  .account-card__row {
+    font-size: 12px;
+  }
+
+  .account-card__value {
+    font-size: 13px;
   }
 
   .account-card__btn {
-    height: 34px;
-    font-size: 12px;
+    height: 38px;
+    font-size: 13px;
+  }
+
+  .empty-state {
+    padding: 40px 16px;
   }
 }
 </style>

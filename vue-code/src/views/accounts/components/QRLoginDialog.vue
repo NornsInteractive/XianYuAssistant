@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { generateQRCode, getQRCodeStatus, getQRCodeCookies } from '@/api/qrlogin'
 import { addAccount } from '@/api/account'
 import { showSuccess, showError } from '@/utils'
@@ -17,6 +17,11 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const isMobile = ref(false)
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
 const qrCodeUrl = ref('')
 const sessionId = ref('')
 const status = ref<QRLoginSession['status']>('pending')
@@ -25,8 +30,11 @@ let pollTimer: number | null = null
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
     generateQR()
   } else {
+    window.removeEventListener('resize', checkScreenSize)
     stopPolling()
   }
 })
@@ -47,7 +55,9 @@ const generateQR = async () => {
 }
 
 const startPolling = () => {
+  if (!sessionId.value) return
   pollTimer = window.setInterval(async () => {
+    if (!sessionId.value) return
     try {
       const response = await getQRCodeStatus(sessionId.value)
       if (response.code === 0 || response.code === 200) {
@@ -137,70 +147,355 @@ const handleClose = () => {
 </script>
 
 <template>
-  <el-dialog
-    :model-value="modelValue"
-    title="扫码添加闲鱼账号"
-    width="400px"
-    @close="handleClose"
-  >
-    <div class="qr-login-content">
-      <div class="qr-code-container">
-        <img v-if="qrCodeUrl" :src="qrCodeUrl" alt="二维码" class="qr-code" />
-        <el-skeleton v-else animated />
+  <!-- iOS 风格弹窗背景 -->
+  <transition name="ios-sheet-fade">
+    <div v-if="modelValue" class="ios-sheet-overlay" @click="handleClose"></div>
+  </transition>
+
+  <!-- iOS 风格 Sheet 弹窗 -->
+  <transition name="ios-sheet-slide">
+    <div v-if="modelValue" class="ios-sheet">
+      <!-- 弹窗头部 -->
+      <div class="ios-sheet-header">
+        <div class="ios-sheet-handle"></div>
+        <div class="ios-sheet-title">扫码添加闲鱼账号</div>
+        <button class="ios-sheet-close" @click="handleClose">✕</button>
       </div>
-      
-      <p class="qr-tip">请使用闲鱼APP扫描二维码登录</p>
-      
-      <div class="qr-status">
-        <el-tag :type="status === 'confirmed' ? 'success' : 'info'">
-          {{ statusText }}
-        </el-tag>
+
+      <!-- 弹窗内容 -->
+      <div class="ios-sheet-content">
+        <div class="qr-code-container">
+          <img v-if="qrCodeUrl" :src="qrCodeUrl" alt="二维码" class="qr-code" />
+          <div v-else class="qr-skeleton">
+            <div class="skeleton-line"></div>
+          </div>
+        </div>
+        
+        <p class="qr-tip">请使用闲鱼APP扫描二维码登录</p>
+        
+        <div class="qr-status">
+          <div class="status-badge" :class="`status-${status}`">
+            {{ statusText }}
+          </div>
+        </div>
+        
+        <p v-if="sessionId" class="session-id">会话ID: {{ sessionId }}</p>
       </div>
-      
-      <p v-if="sessionId" class="session-id">会话ID: {{ sessionId }}</p>
+
+      <!-- 弹窗底部按钮 -->
+      <div class="ios-sheet-footer">
+        <button class="ios-sheet-btn ios-sheet-btn--cancel" @click="handleClose">
+          取消
+        </button>
+      </div>
     </div>
-    
-    <template #footer>
-      <el-button @click="handleClose">取消</el-button>
-    </template>
-  </el-dialog>
+  </transition>
 </template>
 
 <style scoped>
-.qr-login-content {
+/* iOS 弹窗动画 */
+.ios-sheet-fade-enter-active,
+.ios-sheet-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.ios-sheet-fade-enter-from,
+.ios-sheet-fade-leave-to {
+  opacity: 0;
+}
+
+.ios-sheet-slide-enter-active,
+.ios-sheet-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.ios-sheet-slide-enter-from,
+.ios-sheet-slide-leave-to {
+  transform: scale(0.95);
+  opacity: 0;
+}
+
+/* iOS Sheet 背景遮罩 */
+.ios-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* iOS Sheet 容器 */
+.ios-sheet {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  max-width: 90vw;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* iOS Sheet 头部 */
+.ios-sheet-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  position: relative;
+}
+
+.ios-sheet-handle {
+  display: none;
+}
+
+.ios-sheet-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #1d1d1f;
   text-align: center;
-  padding: 20px 0;
+}
+
+.ios-sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 50%;
+  font-size: 18px;
+  color: #1d1d1f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-sheet-close:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* iOS Sheet 内容 */
+.ios-sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ios-sheet-content::-webkit-scrollbar {
+  display: none;
 }
 
 .qr-code-container {
-  margin: 20px 0;
   display: flex;
   justify-content: center;
+  margin: 16px 0;
 }
 
 .qr-code {
-  max-width: 200px;
-  border: 1px solid #dcdfe6;
-  border-radius: 8px;
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.qr-skeleton {
+  width: 200px;
+  height: 200px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0%, 100% {
+    background: rgba(0, 0, 0, 0.06);
+  }
+  50% {
+    background: rgba(0, 0, 0, 0.1);
+  }
+}
+
+.skeleton-line {
+  width: 100%;
+  height: 100%;
+  background: inherit;
 }
 
 .qr-tip {
-  margin: 10px 0;
-  color: #606266;
+  margin: 16px 0 12px;
+  color: #6e6e73;
   font-size: 14px;
+  text-align: center;
+  line-height: 1.5;
 }
 
 .qr-status {
-  margin: 10px 0;
-  min-height: 32px;
   display: flex;
   justify-content: center;
-  align-items: center;
+  margin: 12px 0;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 120px;
+}
+
+.status-pending,
+.status-scanned {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007aff;
+}
+
+.status-confirmed {
+  background: rgba(52, 199, 89, 0.1);
+  color: #34c759;
+}
+
+.status-expired {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
 }
 
 .session-id {
-  margin: 10px 0;
+  margin: 12px 0;
   font-size: 12px;
-  color: #909399;
+  color: #86868b;
+  text-align: center;
+}
+
+/* iOS Sheet 底部 */
+.ios-sheet-footer {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.ios-sheet-btn {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ios-sheet-btn--cancel {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1d1d1f;
+}
+
+.ios-sheet-btn--cancel:active {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* 手机端适配 */
+@media screen and (max-width: 768px) {
+  .ios-sheet {
+    max-height: 85vh;
+    max-width: 95vw;
+  }
+
+  .ios-sheet-header {
+    padding: 14px 16px 12px;
+  }
+
+  .ios-sheet-title {
+    font-size: 16px;
+  }
+
+  .ios-sheet-close {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .ios-sheet-content {
+    padding: 16px 12px;
+  }
+
+  .qr-code {
+    width: 160px;
+    height: 160px;
+  }
+
+  .qr-skeleton {
+    width: 160px;
+    height: 160px;
+  }
+
+  .qr-tip {
+    font-size: 13px;
+    margin: 12px 0 10px;
+  }
+
+  .status-badge {
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+
+  .session-id {
+    font-size: 11px;
+  }
+
+  .ios-sheet-footer {
+    padding: 10px 12px;
+  }
+
+  .ios-sheet-btn {
+    height: 44px;
+    font-size: 15px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .ios-sheet {
+    max-height: 80vh;
+    max-width: 92vw;
+  }
+
+  .qr-code {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qr-skeleton {
+    width: 140px;
+    height: 140px;
+  }
+
+  .qr-tip {
+    font-size: 12px;
+  }
+
+  .ios-sheet-btn {
+    height: 42px;
+    font-size: 14px;
+  }
 }
 </style>

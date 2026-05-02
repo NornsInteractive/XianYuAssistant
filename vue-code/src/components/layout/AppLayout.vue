@@ -1,7 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, shallowRef, onMounted, onUnmounted, computed, provide, markRaw } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import NavMenu from './NavMenu.vue'
+
+// 导入所有页面图标
+import IconChart from '@/components/icons/IconChart.vue'
+import IconAccount from '@/components/icons/IconAccount.vue'
+import IconWifi from '@/components/icons/IconWifi.vue'
+import IconShoppingBag from '@/components/icons/IconShoppingBag.vue'
+import IconTruck from '@/components/icons/IconTruck.vue'
+import IconMessage from '@/components/icons/IconMessage.vue'
+import IconRobot from '@/components/icons/IconRobot.vue'
+import IconChat from '@/components/icons/IconChat.vue'
+import IconLog from '@/components/icons/IconLog.vue'
+import IconShield from '@/components/icons/IconShield.vue'
 
 const route = useRoute()
 
@@ -10,10 +22,19 @@ const isMobile = ref(false)  // < 768px
 const isTablet = ref(false)  // 768px - 1024px
 const isDesktop = ref(false) // > 1024px
 
-// 平板模式下的折叠状态
-const isCollapsed = ref(false)
-// 手机模式下的抽屉状态
+// 移动端和平板端共用的抽屉状态
 const drawerVisible = ref(false)
+
+// 页面特定的导航栏内容
+const headerContent = shallowRef<any>(null)
+
+// 提供给页面组件的方法来设置导航栏内容
+const setHeaderContent = (content: any) => {
+  headerContent.value = content
+}
+
+// 提供给页面组件
+provide('setHeaderContent', setHeaderContent)
 
 const pageTitleMap: Record<string, string> = {
   '/dashboard': '仪表板',
@@ -28,7 +49,21 @@ const pageTitleMap: Record<string, string> = {
   '/settings': '系统设置'
 }
 
+const pageIconMap: Record<string, any> = {
+  '/dashboard': markRaw(IconChart),
+  '/accounts': markRaw(IconAccount),
+  '/connection': markRaw(IconWifi),
+  '/goods': markRaw(IconShoppingBag),
+  '/orders': markRaw(IconTruck),
+  '/messages': markRaw(IconMessage),
+  '/auto-delivery': markRaw(IconRobot),
+  '/auto-reply': markRaw(IconChat),
+  '/operation-log': markRaw(IconLog),
+  '/settings': markRaw(IconShield)
+}
+
 const currentPageTitle = computed(() => pageTitleMap[route.path] || '闲鱼自动化')
+const currentPageIcon = computed(() => pageIconMap[route.path] || null)
 
 // 检测屏幕尺寸并自动设置设备类型
 const checkScreenSize = () => {
@@ -45,23 +80,18 @@ const checkScreenSize = () => {
     isMobile.value = false
     isTablet.value = true
     isDesktop.value = false
-    // 切换到平板模式时，默认折叠侧边栏
-    isCollapsed.value = true
+    // 切换到平板模式时，关闭抽屉
+    drawerVisible.value = false
   } else {
     isMobile.value = false
     isTablet.value = false
     isDesktop.value = true
-    // 切换到桌面模式时，展开侧边栏
-    isCollapsed.value = false
+    // 切换到桌面模式时，关闭抽屉
+    drawerVisible.value = false
   }
 }
 
-// 切换平板模式的折叠状态
-const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value
-}
-
-// 切换手机模式的抽屉
+// 切换抽屉（手机端和平板端共用）
 const toggleDrawer = () => {
   drawerVisible.value = !drawerVisible.value
 }
@@ -85,33 +115,50 @@ onUnmounted(() => {
     <!-- 手机端: 顶部导航栏 -->
     <div v-if="isMobile" class="mobile-header">
       <el-button class="menu-toggle-btn" @click="toggleDrawer" circle>
-        <span class="menu-icon">{{ drawerVisible ? '✕' : '☰' }}</span>
+        <span class="menu-icon">☰</span>
       </el-button>
-      <div class="mobile-page-title">{{ currentPageTitle }}</div>
-    </div>
-
-    <!-- 平板端: 顶部导航栏（带折叠按钮） -->
-    <div v-if="isTablet" class="tablet-header">
-      <el-button class="collapse-toggle-btn" @click="toggleCollapse" circle>
-        <span class="collapse-icon">{{ isCollapsed ? '☰' : '✕' }}</span>
-      </el-button>
-      <div class="tablet-page-title">{{ currentPageTitle }}</div>
-    </div>
-
-    <!-- 手机端: 全屏菜单 -->
-    <div v-if="isMobile && drawerVisible" class="mobile-menu-overlay" @click="closeDrawer">
-      <div class="mobile-menu" @click.stop>
-        <div class="mobile-menu-header">
-          <div class="logo">
-            <div class="logo-icon">X</div>
-            <div class="logo-text">XianYuAssistant</div>
-          </div>
-        </div>
-        <div class="mobile-menu-content">
-          <NavMenu @select="closeDrawer" />
-        </div>
+      <div class="header-title-section">
+        <component v-if="currentPageIcon" :is="currentPageIcon" class="header-page-icon" />
+        <div class="mobile-page-title">{{ currentPageTitle }}</div>
+      </div>
+      <div v-if="headerContent && (route.path === '/goods' || route.path === '/messages' || route.path === '/auto-delivery' || route.path === '/kami-config' || route.path === '/orders' || route.path === '/auto-reply' || route.path === '/operation-log')" class="header-content-slot">
+        <component :is="headerContent" />
       </div>
     </div>
+
+    <!-- 平板端: 顶部导航栏（带抽屉按钮） -->
+    <div v-if="isTablet" class="tablet-header">
+      <el-button class="menu-toggle-btn" @click="toggleDrawer" circle>
+        <span class="menu-icon">☰</span>
+      </el-button>
+      <div class="header-title-section">
+        <component v-if="currentPageIcon" :is="currentPageIcon" class="header-page-icon" />
+        <div class="tablet-page-title">{{ currentPageTitle }}</div>
+      </div>
+      <div v-if="headerContent && (route.path === '/goods' || route.path === '/messages' || route.path === '/auto-delivery' || route.path === '/kami-config' || route.path === '/orders' || route.path === '/auto-reply' || route.path === '/operation-log')" class="header-content-slot">
+        <component :is="headerContent" />
+      </div>
+    </div>
+
+    <!-- 手机端和平板端: 左侧抽屉菜单 -->
+    <transition name="drawer">
+      <div v-if="(isMobile || isTablet) && drawerVisible" class="drawer-overlay" @click="closeDrawer">
+        <div class="drawer-menu" @click.stop>
+          <div class="drawer-header">
+            <div class="logo">
+              <div class="logo-icon">X</div>
+              <div class="logo-text">XianYuAssistant</div>
+            </div>
+            <el-button class="drawer-close-btn" @click="closeDrawer" circle size="small">
+              <span class="close-icon">✕</span>
+            </el-button>
+          </div>
+          <div class="drawer-content">
+            <NavMenu @select="closeDrawer" />
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <!-- 桌面端: 固定侧边栏 -->
     <el-container v-if="isDesktop" class="layout-container">
@@ -130,23 +177,11 @@ onUnmounted(() => {
       </el-container>
     </el-container>
 
-    <!-- 平板端: 可折叠侧边栏 -->
+    <!-- 平板端: 主内容区 -->
     <el-container v-if="isTablet" class="layout-container">
-      <el-aside :width="isCollapsed ? '0px' : '240px'" class="sidebar tablet-sidebar" :class="{ collapsed: isCollapsed }">
-        <div v-if="!isCollapsed" class="sidebar-content">
-          <div class="logo">
-            <div class="logo-icon">X</div>
-            <div class="logo-text">XianYuAssistant</div>
-          </div>
-          <NavMenu @select="isCollapsed = true" />
-        </div>
-      </el-aside>
-
-      <el-container>
-        <el-main>
-          <RouterView />
-        </el-main>
-      </el-container>
+      <el-main>
+        <RouterView />
+      </el-main>
     </el-container>
 
     <!-- 手机端: 主内容区 -->
@@ -162,10 +197,14 @@ onUnmounted(() => {
 .app-layout {
   height: 100vh;
   background: #e8e8e8;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .layout-container {
-  height: 100%;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* ========== 桌面端: 固定侧边栏 ========== */
@@ -174,6 +213,15 @@ onUnmounted(() => {
   border-right: 1px solid #d4d4d4;
   box-shadow: none;
   transition: width 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .logo {
@@ -195,6 +243,7 @@ onUnmounted(() => {
   color: white;
   font-size: 18px;
   font-weight: bold;
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -222,8 +271,16 @@ onUnmounted(() => {
 
 .el-main {
   padding: 32px 40px;
-  overflow: hidden;
+  overflow: auto;
   background: #e8e8e8;
+  height: 100%;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.el-main::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 :deep(.el-divider__text) {
@@ -243,13 +300,14 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding: 12px 16px;
+  padding: 14px 20px;
   background: #f8f8f8;
   border-bottom: 1px solid #d4d4d4;
-  position: sticky;
-  top: 0;
   z-index: 100;
-  gap: 12px;
+  gap: 16px;
+  height: 64px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .tablet-page-title {
@@ -259,41 +317,25 @@ onUnmounted(() => {
   flex: 1;
 }
 
-.collapse-toggle-btn {
-  width: 40px;
-  height: 40px;
-  background: #2a2a2a !important;
-  border-color: #2a2a2a !important;
-  color: white !important;
-  font-size: 20px;
+.header-title-section {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 12px;
+  flex: 1;
 }
 
-.collapse-toggle-btn:hover {
-  background: #1a1a1a !important;
-  border-color: #1a1a1a !important;
+.header-page-icon {
+  width: 24px;
+  height: 24px;
+  color: #1a1a1a;
+  flex-shrink: 0;
 }
 
-.collapse-icon {
-  font-size: 20px;
-  line-height: 1;
-}
-
-/* ========== 平板端: 可折叠侧边栏 ========== */
-.tablet-sidebar {
-  overflow: hidden;
-}
-
-.tablet-sidebar.collapsed {
-  border-right: none;
-}
-
-.sidebar-content {
-  width: 240px;
-  height: 100%;
-  overflow-y: auto;
+.header-content-slot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 /* ========== 手机端: 顶部导航栏 ========== */
@@ -304,145 +346,266 @@ onUnmounted(() => {
   padding: 12px 16px;
   background: #f8f8f8;
   border-bottom: 1px solid #d4d4d4;
-  position: sticky;
-  top: 0;
   z-index: 100;
   gap: 12px;
+  height: 56px;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .mobile-page-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   color: #1a1a1a;
   flex: 1;
 }
 
+.header-content-slot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .menu-toggle-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   background: #2a2a2a !important;
   border-color: #2a2a2a !important;
   color: white !important;
-  font-size: 20px;
+  font-size: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
 }
 
-.menu-toggle-btn:hover {
+.menu-toggle-btn:hover,
+.menu-toggle-btn:active,
+.menu-toggle-btn:focus {
   background: #1a1a1a !important;
   border-color: #1a1a1a !important;
 }
 
 .menu-icon {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
+  display: block;
 }
 
-/* ========== 手机端: 全屏菜单 ========== */
-.mobile-menu-overlay {
+/* ========== 左侧抽屉菜单（手机端和平板端共用） ========== */
+.drawer-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 200;
+  z-index: 1000;
+  display: flex;
+  align-items: stretch;
+}
+
+.drawer-menu {
+  width: 280px;
+  max-width: 80vw;
+  background: #f8f8f8;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  background: #f8f8f8;
+}
+
+.drawer-header .logo {
+  padding: 0;
+  flex: 1;
+}
+
+.drawer-close-btn {
+  width: 32px;
+  height: 32px;
+  background: transparent !important;
+  border: 1px solid #d4d4d4 !important;
+  color: #666 !important;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.mobile-menu {
-  width: 90%;
-  max-width: 320px;
-  max-height: 80vh;
-  background: #f8f8f8;
-  border-radius: 16px;
-  overflow: hidden;
-  animation: slideUp 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-menu-header {
   flex-shrink: 0;
-  border-bottom: 1px solid #e8e8e8;
+  padding: 0;
+  margin-left: 12px;
 }
 
-.mobile-menu-header .logo {
-  padding: 20px 24px;
+.drawer-close-btn:hover,
+.drawer-close-btn:active {
+  background: #ececec !important;
+  border-color: #999 !important;
+  color: #1a1a1a !important;
 }
 
-.mobile-menu-content {
+.close-icon {
+  font-size: 18px;
+  line-height: 1;
+  display: block;
+}
+
+.drawer-content {
   flex: 1;
   overflow-y: auto;
-  min-height: 0;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  overflow-x: hidden;
+  padding: 8px 0;
+  -webkit-overflow-scrolling: touch;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-.mobile-menu-content::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+.drawer-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+/* 抽屉动画 */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.drawer-enter-active .drawer-menu,
+.drawer-leave-active .drawer-menu {
+  transition: transform 0.3s ease;
+}
+
+.drawer-enter-from,
+.drawer-leave-to {
+  opacity: 0;
+}
+
+.drawer-enter-from .drawer-menu {
+  transform: translateX(-100%);
+}
+
+.drawer-leave-to .drawer-menu {
+  transform: translateX(-100%);
 }
 
 /* ========== 响应式适配 ========== */
 /* 平板模式 (768px - 1024px) */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
   .tablet-header {
-    padding: 10px 14px;
+    padding: 12px 18px;
+    height: 60px;
   }
 
-  .collapse-toggle-btn {
-    width: 36px;
-    height: 36px;
+  .tablet-page-title {
+    font-size: 17px;
   }
 
-  .collapse-icon {
-    font-size: 18px;
+  .menu-toggle-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+  }
+
+  .menu-icon {
+    font-size: 20px;
   }
 
   .el-main {
-    padding: 20px 24px;
+    padding: 24px 28px;
+  }
+
+  .drawer-menu {
+    width: 260px;
+  }
+
+  .drawer-header {
+    padding: 14px 18px;
   }
 
   :deep(.el-menu-item) {
-    margin: 2px 12px;
-  }
-
-  :deep(.el-menu-item span) {
-    font-size: 14px;
+    margin: 2px 14px;
+    font-size: 15px;
   }
 }
 
 /* 手机模式 (< 768px) */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .mobile-header {
-    padding: 10px 12px;
+    padding: 10px 14px;
+    height: 52px;
+  }
+
+  .mobile-page-title {
+    font-size: 16px;
+  }
+
+  .menu-toggle-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .menu-icon {
+    font-size: 20px;
+  }
+
+  .el-main {
+    padding: 16px 20px;
+    overflow: hidden;
+  }
+
+  .drawer-menu {
+    width: 260px;
+  }
+
+  .drawer-header {
+    padding: 12px 16px;
+  }
+
+  .drawer-close-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
+
+  .close-icon {
+    font-size: 16px;
+  }
+
+  :deep(.el-menu-item) {
+    margin: 2px 12px;
+    font-size: 15px;
+    padding: 12px 16px;
+  }
+}
+
+/* 小屏手机模式 (< 480px) */
+@media (max-width: 480px) {
+  .mobile-header {
+    padding: 8px 12px;
+    height: 48px;
+  }
+
+  .mobile-page-title {
+    font-size: 15px;
   }
 
   .menu-toggle-btn {
     width: 36px;
     height: 36px;
+    font-size: 18px;
   }
 
   .menu-icon {
@@ -451,42 +614,41 @@ onUnmounted(() => {
 
   .el-main {
     padding: 12px 16px;
+    overflow: hidden;
   }
 
-  :deep(.el-menu-item) {
-    margin: 2px 12px;
+  .drawer-menu {
+    width: 240px;
   }
 
-  :deep(.el-menu-item span) {
-    font-size: 14px;
-  }
-}
-
-/* 小屏手机模式 (< 480px) */
-@media (max-width: 480px) {
-  .mobile-header {
-    padding: 8px 10px;
+  .drawer-header {
+    padding: 10px 14px;
   }
 
-  .menu-toggle-btn {
-    width: 32px;
-    height: 32px;
-  }
-
-  .menu-icon {
+  .drawer-header .logo-icon {
+    width: 28px;
+    height: 28px;
     font-size: 16px;
   }
 
-  .el-main {
-    padding: 10px 12px;
+  .drawer-header .logo-text {
+    font-size: 15px;
+  }
+
+  .drawer-close-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .close-icon {
+    font-size: 14px;
   }
 
   :deep(.el-menu-item) {
-    margin: 2px 8px;
-  }
-
-  :deep(.el-menu-item span) {
-    font-size: 13px;
+    margin: 2px 10px;
+    font-size: 14px;
+    padding: 10px 14px;
   }
 }
 </style>

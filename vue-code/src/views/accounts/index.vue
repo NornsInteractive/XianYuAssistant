@@ -9,7 +9,6 @@ import DeleteConfirmDialog from './components/DeleteConfirmDialog.vue'
 import IconQrCode from '@/components/icons/IconQrCode.vue'
 import IconPlus from '@/components/icons/IconPlus.vue'
 import IconSync from '@/components/icons/IconSync.vue'
-import IconAccount from '@/components/icons/IconAccount.vue'
 
 const {
   loading,
@@ -33,10 +32,9 @@ loadAccounts();
     <!-- Page Header -->
     <header class="accounts__header">
       <div class="accounts__title-row">
-        <div class="accounts__title-icon"><IconAccount /></div>
         <h1 class="accounts__title mobile-hidden">闲鱼账号</h1>
       </div>
-      <div class="accounts__actions">
+      <div class="accounts__actions desktop-only">
         <button class="btn btn--primary" @click="showQRLoginDialog">
           <IconQrCode />
           <span>扫码添加</span>
@@ -72,6 +70,18 @@ loadAccounts();
         />
       </div>
     </section>
+
+    <!-- Mobile Bottom Actions -->
+    <footer class="accounts__footer mobile-only">
+      <button class="btn btn--primary btn--full" @click="showQRLoginDialog">
+        <IconQrCode />
+        <span>扫码添加</span>
+      </button>
+      <button class="btn btn--secondary btn--full" @click="showManualAddDialog">
+        <IconPlus />
+        <span>手动添加</span>
+      </button>
+    </footer>
 
     <!-- Dialogs -->
     <AddAccountDialog

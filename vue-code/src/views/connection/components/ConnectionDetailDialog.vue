@@ -375,6 +375,8 @@ onBeforeUnmount(() => {
     :class="{ 'mobile-dialog': isMobile }"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
+    top="0"
+    :destroy-on-close="true"
   >
     <div v-loading="statusLoading" class="connection-detail">
       <div v-if="connectionStatus" class="detail-content">
@@ -1055,43 +1057,47 @@ onBeforeUnmount(() => {
 
 <style>
 /* 全局样式：连接详情对话框 */
+.connection-detail-dialog {
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  max-height: 90vh !important;
+}
+
 .connection-detail-dialog .el-dialog__body {
   padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.connection-detail-dialog .el-dialog__header {
-  padding: 16px 20px;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.connection-detail-dialog .el-dialog__footer {
-  padding: 12px 20px;
-  border-top: 1px solid #ebeef5;
-}
-
-/* 隐藏滚动条但保留滚动功能 */
 .connection-detail-dialog .el-dialog__body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
 
-.connection-detail-dialog .el-dialog__body {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.connection-detail-dialog .el-dialog__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
+  flex-shrink: 0;
 }
 
-/* 手机端弹窗样式：居中显示 */
+.connection-detail-dialog .el-dialog__footer {
+  padding: 12px 20px;
+  border-top: 1px solid #ebeef5;
+  flex-shrink: 0;
+}
+
+/* 手机端弹窗样式 */
 .mobile-dialog {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
   border-radius: 16px !important;
   max-height: 85vh !important;
   max-width: 95vw !important;
-  display: flex !important;
-  flex-direction: column !important;
   animation: fadeIn 0.2s ease-out !important;
 }
 
@@ -1103,14 +1109,11 @@ onBeforeUnmount(() => {
 .mobile-dialog .el-dialog__body {
   padding: 12px 16px !important;
   max-height: calc(85vh - 140px) !important;
-  overflow-y: auto !important;
-  flex: 1 !important;
 }
 
 .mobile-dialog .el-dialog__footer {
   padding: 10px 16px !important;
   border-top: 1px solid #ebeef5;
-  flex-shrink: 0 !important;
 }
 
 /* 淡入动画 */
@@ -1129,10 +1132,13 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 768px) {
+  .connection-detail-dialog {
+    max-height: 85vh !important;
+  }
+
   .connection-detail-dialog .el-dialog__body {
     padding: 12px 16px;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
+    max-height: calc(85vh - 140px);
   }
 
   .connection-detail-dialog .el-dialog__header {
