@@ -1,7 +1,7 @@
 # ===== 多阶段构建 =====
 
 # 阶段1: 构建前端
-FROM node:20-alpine AS frontend-build
+FROM docker.io/node:20-alpine AS frontend-build
 
 WORKDIR /app/vue-code
 
@@ -14,10 +14,15 @@ RUN npm ci
 
 # 复制前端源码并构建
 COPY vue-code/ ./
+
+# 创建输出目录结构（vite 配置输出到 ../src/main/resources/static）
+RUN mkdir -p ../src/main/resources/static
+
+# 构建前端
 RUN npm run build:spring
 
 # 阶段2: 构建后端 JAR
-FROM eclipse-temurin:21-jdk-alpine AS backend-build
+FROM docker.io/eclipse-temurin:21-jdk-alpine AS backend-build
 
 WORKDIR /app
 
@@ -25,18 +30,18 @@ WORKDIR /app
 COPY .mvn/ .mvn/
 COPY mvnw mvnw.cmd pom.xml ./
 RUN chmod +x mvnw
-
+COPY src/ src/
 # 复制前端构建产物到 static 目录
-COPY --from=frontend-build /app/vue-code/../src/main/resources/static src/main/resources/static/
+COPY --from=frontend-build /app/src/main/resources/static/ src/main/resources/static/
 
 # 复制后端源码
-COPY src/ src/
-
+#COPY src/ src/
+RUN ls -la src/main/resources/static/
 # 构建 JAR（跳过测试）
 RUN ./mvnw clean package -DskipTests
 
 # 阶段3: 运行时镜像
-FROM eclipse-temurin:21-jre-alpine
+FROM docker.io/eclipse-temurin:21-jre-alpine
 
 LABEL maintainer="IAMLZY"
 LABEL description="XianYuAssistant - 闲鱼自动化管理系统"
@@ -59,3 +64,4 @@ ENV ALI_API_KEY=""
 
 # 启动命令
 ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Dserver.port=${SERVER_PORT} -jar app.jar"]
+

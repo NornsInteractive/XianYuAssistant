@@ -78,14 +78,14 @@ public class DynamicVectorStoreManager {
         String embeddingModel = getSettingValue(EMBEDDING_MODEL_SETTING);
 
         // 如果 Embedding 专用 API Key 未配置，使用 AI 对话的 API Key
-        if (embeddingApiKey == null || embeddingApiKey.trim().isEmpty()) {
-            embeddingApiKey = getSettingValue(AI_API_KEY_SETTING);
-        }
+        //if (embeddingApiKey == null || embeddingApiKey.trim().isEmpty()) {
+        //    embeddingApiKey = getSettingValue(AI_API_KEY_SETTING);
+        //}
 
         // 如果 Embedding 专用 Base URL 未配置，使用 AI 对话的 Base URL
-        if (embeddingBaseUrl == null || embeddingBaseUrl.trim().isEmpty()) {
-            embeddingBaseUrl = getSettingValue(AI_BASE_URL_SETTING);
-        }
+        //if (embeddingBaseUrl == null || embeddingBaseUrl.trim().isEmpty()) {
+        //    embeddingBaseUrl = getSettingValue(AI_BASE_URL_SETTING);
+        //}
 
         // API Key 未配置
         if (embeddingApiKey == null || embeddingApiKey.trim().isEmpty()) {
